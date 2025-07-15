@@ -683,13 +683,21 @@ $kategori_icons = [
     <div class="trusted-item"><i class="fas fa-check text-success"></i> DIPERCAYA BANYAK PERUSAHAAN LOKAL SAMPAI INTERNASIONAL</div>
 </div>
 
+<?php
+// Ambil promo dari database
+require_once 'models/PromoModel.php';
+$promoModel = new PromoModel($conn);
+$active_promos = $promoModel->getActivePromos();
+?>
+
 <div class="promo-cards">
+    <!-- Kartu promo dummy (selalu tampil) -->
     <div class="promo-card-modern" style="background:#00cfff;">
         <img src="assets/images/DSLR-LEICA-260x200.jpg" class="promo-img" alt="Promo Diskon Akhir Tahun">
         <div class="promo-content">
             <div class="promo-title">Diskon Akhir Tahun!</div>
             <div class="promo-desc">Dapatkan diskon hingga 30% untuk semua kategori.</div>
-            <button class="promo-btn">Lihat Promo</button>
+            <a class="promo-btn" href="promo.php">Lihat Promo</a>
             <span class="promo-badge">30% OFF</span>
         </div>
     </div>

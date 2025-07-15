@@ -540,6 +540,19 @@ INSERT INTO `users` (`id`, `username`, `nama_lengkap`, `email`, `no_hp`, `alamat
 (3, 'admin1', 'ADmin Ganteng', 'adm1@gmail.com', '0991219912912912', 'Jateng', 'assets/images/profile_pictures/profile_686d26149e4cd.jpeg', '185000.00', NULL, NULL, NULL, '2025-06-29 21:37:43', '0192023a7bbd73250516f069df18b500', 'admin'),
 (4, 'user2', 'userrsewaken', 'user2@gmail.com', '029320930293', 'jawa', 'assets/images/profile_pictures/profile_6864a9726af86.jpg', '175000.00', NULL, NULL, NULL, '2025-07-02 10:37:22', '6ad14ba9986e3615423dfca256d04e3f', 'user');
 
+-- Tabel untuk menyimpan promo yang sudah di-claim user
+CREATE TABLE IF NOT EXISTS claimed_promos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    promo_id INT NOT NULL,
+    status ENUM('belum_digunakan','sudah_digunakan') DEFAULT 'belum_digunakan',
+    claimed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (promo_id) REFERENCES promos(id)
+);
+
+-- --------------------------------------------------------
+
 --
 -- Indexes for dumped tables
 --

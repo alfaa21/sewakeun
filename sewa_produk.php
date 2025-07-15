@@ -38,6 +38,16 @@ while($k = mysqli_fetch_assoc($kurir_query)) {
     $kurir_list[] = $k;
 }
 
+// Ambil promo yang sudah di-claim user dan belum digunakan
+$claimed_promos = [];
+if (isset($_SESSION['user_id'])) {
+    $user_id = $_SESSION['user_id'];
+    $q_claimed = mysqli_query($conn, "SELECT cp.id as claimed_id, p.* FROM claimed_promos cp JOIN promos p ON cp.promo_id = p.id WHERE cp.user_id = $user_id AND cp.status = 'belum_digunakan' AND p.status = 'aktif' AND p.tanggal_mulai <= CURDATE() AND p.tanggal_berakhir >= CURDATE()");
+    while($row = mysqli_fetch_assoc($q_claimed)) {
+        $claimed_promos[] = $row;
+    }
+}
+
 include 'includes/_header.php';
 ?>
 
@@ -134,6 +144,18 @@ include 'includes/_header.php';
                             </select>
                         </div>
                         <div class="mb-3">
+                            <label for="claimed_promo_id" class="form-label">Pilih Promo/Diskon (Opsional)</label>
+                            <select class="form-select" id="claimed_promo_id" name="claimed_promo_id">
+                                <option value="">-- Tidak Pakai Promo --</option>
+                                <?php foreach($claimed_promos as $promo): ?>
+                                    <option value="<?= $promo['claimed_id'] ?>">
+                                        <?= htmlspecialchars($promo['nama']) ?> (<?= $promo['tipe'] == 'percentage' ? $promo['nilai'].'% OFF' : ($promo['tipe'] == 'fixed' ? 'Rp '.number_format($promo['nilai'],0,',','.') : 'Gratis Ongkir') ?>)
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
                             <label for="catatan" class="form-label">Catatan (opsional)</label>
                             <textarea class="form-control" id="catatan" name="catatan" rows="2" placeholder="Tulis catatan jika ada..."></textarea>
                         </div>
@@ -161,13 +183,15 @@ include 'includes/_header.php';
         const maxDuration = parseInt(lamaSewaInput.max);
         const tanggalMulaiInput = document.getElementById('tanggal_mulai');
         const tanggalPengembalianInput = document.getElementById('tanggal_pengembalian');
-        const biayaKurirList = JSON.parse(document.getElementById('biaya-kurir-list').value);
+        let biayaKurirList = {};
+        try { biayaKurirList = JSON.parse(document.getElementById('biaya-kurir-list').value); } catch(e) {}
         const radioCod = document.getElementById('pengiriman_cod');
         const radioKurir = document.getElementById('pengiriman_kurir');
         const groupKurir = document.getElementById('pilihan-kurir-group');
         const selectKurir = document.getElementById('kurir_id');
         const biayaKurirInfo = document.getElementById('biaya-kurir-info');
         const biayaKurirSpan = document.getElementById('biaya-kurir');
+        const claimedPromoSelect = document.getElementById('claimed_promo_id');
 
         function calculateTotal() {
             const lamaSewa = parseInt(lamaSewaInput.value);
@@ -217,17 +241,63 @@ include 'includes/_header.php';
             tanggalMulaiInput.value = todayStr;
         }
 
-        lamaSewaInput.addEventListener('input', function() {
-            calculateTotal();
-            calculateTanggalPengembalian();
-        });
-        quantityInput.addEventListener('input', calculateTotal);
+        function calculateTotalWithPromo() {
+            const lamaSewa = parseInt(lamaSewaInput.value);
+            const quantity = parseInt(quantityInput.value);
+            if (isNaN(lamaSewa) || isNaN(quantity) || quantity < 1) {
+                totalBiayaSpan.innerText = '0';
+                biayaKurirInfo.style.display = 'none';
+                return;
+            }
+            let total = hargaProduk * lamaSewa * quantity;
+            let biayaKurir = 0;
+            if (radioKurir.checked && selectKurir.value && biayaKurirList[selectKurir.value]) {
+                biayaKurir = parseInt(biayaKurirList[selectKurir.value]);
+                biayaKurirInfo.style.display = '';
+                biayaKurirSpan.innerText = biayaKurir.toLocaleString('id-ID');
+            } else {
+                biayaKurirInfo.style.display = 'none';
+            }
+            total += biayaKurir;
+            const claimedId = claimedPromoSelect.value;
+            if (claimedId) {
+                getPromoDetail(claimedId, function(promo) {
+                    if (!promo) { totalBiayaSpan.innerText = total.toLocaleString('id-ID'); return; }
+                    let diskon = 0;
+                    if (promo.tipe === 'percentage') {
+                        diskon = total * (promo.nilai / 100);
+                        if (promo.max_diskon) diskon = Math.min(diskon, promo.max_diskon);
+                    } else if (promo.tipe === 'fixed') {
+                        diskon = promo.nilai;
+                    } else if (promo.tipe === 'free_shipping') {
+                        diskon = biayaKurir;
+                    }
+                    let totalSetelahDiskon = total - diskon;
+                    if (totalSetelahDiskon < 0) totalSetelahDiskon = 0;
+                    totalBiayaSpan.innerText = totalSetelahDiskon.toLocaleString('id-ID');
+                });
+            } else {
+                totalBiayaSpan.innerText = total.toLocaleString('id-ID');
+            }
+        }
+
+        function getPromoDetail(claimedId, callback) {
+            if (!claimedId) { callback(null); return; }
+            fetch('api/get_claimed_promo.php?id=' + claimedId)
+                .then(res => res.json())
+                .then(data => callback(data))
+                .catch(() => callback(null));
+        }
+
+        lamaSewaInput.addEventListener('input', calculateTotalWithPromo);
+        quantityInput.addEventListener('input', calculateTotalWithPromo);
         tanggalMulaiInput.addEventListener('input', calculateTanggalPengembalian);
-        radioCod.addEventListener('change', calculateTotal);
-        radioKurir.addEventListener('change', calculateTotal);
-        selectKurir.addEventListener('change', calculateTotal);
+        radioCod.addEventListener('change', calculateTotalWithPromo);
+        radioKurir.addEventListener('change', calculateTotalWithPromo);
+        selectKurir.addEventListener('change', calculateTotalWithPromo);
+        claimedPromoSelect && claimedPromoSelect.addEventListener('change', calculateTotalWithPromo);
         // Inisialisasi awal
-        calculateTotal();
+        calculateTotalWithPromo();
         calculateTanggalPengembalian();
 
         // Show/hide pilihan kurir
@@ -244,6 +314,51 @@ include 'includes/_header.php';
         radioKurir.addEventListener('change', toggleKurir);
         toggleKurir();
     });
+
+    // Promo validation function
+    function validatePromo() {
+        const kodePromo = document.getElementById('kode_promo').value;
+        const promoResult = document.getElementById('promo-result');
+        
+        if (!kodePromo) {
+            promoResult.innerHTML = '<div class="alert alert-warning">Masukkan kode promo terlebih dahulu</div>';
+            return;
+        }
+        
+        // Show loading
+        promoResult.innerHTML = '<div class="alert alert-info"><i class="fas fa-spinner fa-spin"></i> Memvalidasi promo...</div>';
+        
+        // Get current total for validation
+        const totalBiaya = parseInt(document.getElementById('total-biaya').innerText.replace(/\D/g, ''));
+        
+        fetch('api/validate_promo.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `kode_promo=${encodeURIComponent(kodePromo)}&total_amount=${totalBiaya}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.valid) {
+                promoResult.innerHTML = `
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle"></i> Promo valid! 
+                        Diskon: Rp ${data.diskon.toLocaleString('id-ID')}
+                        <br><small>Total setelah diskon: Rp ${data.total_setelah_diskon.toLocaleString('id-ID')}</small>
+                    </div>
+                `;
+                // Update total display
+                document.getElementById('total-biaya').innerText = data.total_setelah_diskon.toLocaleString('id-ID');
+            } else {
+                promoResult.innerHTML = `<div class="alert alert-danger"><i class="fas fa-times-circle"></i> ${data.message}</div>`;
+            }
+        })
+        .catch(error => {
+            promoResult.innerHTML = '<div class="alert alert-danger">Terjadi kesalahan saat validasi promo</div>';
+            console.error('Error:', error);
+        });
+    }
 </script>
 
 </body>

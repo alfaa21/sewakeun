@@ -131,11 +131,15 @@ if (isset($_POST['add_to_cart_ajax'])) {
     }
 }
 
-
-$message = $_SESSION['message'] ?? '';
-$message_type = $_SESSION['message_type'] ?? '';
-unset($_SESSION['message']);
-unset($_SESSION['message_type']);
+// Ambil promo yang sudah di-claim user dan belum digunakan
+$claimed_promos = [];
+if (isset($_SESSION['user_id'])) {
+    $user_id = $_SESSION['user_id'];
+    $q_claimed = mysqli_query($conn, "SELECT cp.id as claimed_id, p.* FROM claimed_promos cp JOIN promos p ON cp.promo_id = p.id WHERE cp.user_id = $user_id AND cp.status = 'belum_digunakan' AND p.status = 'aktif' AND p.tanggal_mulai <= CURDATE() AND p.tanggal_berakhir >= CURDATE()");
+    while($row = mysqli_fetch_assoc($q_claimed)) {
+        $claimed_promos[] = $row;
+    }
+}
 ?>
 
 <main class="container mt-4">
