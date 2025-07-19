@@ -36,16 +36,16 @@ include_once __DIR__ . '/session_bootstrap.php';
                         $kategori_list_header = [];
                         $conn_kat = mysqli_connect('localhost', 'root', '', 'db_sewaken');
                         if ($conn_kat) {
-                            $kat_q = mysqli_query($conn_kat, "SELECT nama FROM kategori ORDER BY nama ASC");
+                            $kat_q = mysqli_query($conn_kat, "SELECT id, nama FROM kategori ORDER BY nama ASC");
                             while ($row = mysqli_fetch_assoc($kat_q)) {
-                                $kategori_list_header[] = $row['nama'];
+                                $kategori_list_header[] = $row;
                             }
                             mysqli_close($conn_kat);
                         }
                         ?>
                         <ul class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
                             <?php foreach($kategori_list_header as $kat): ?>
-                                <li><a class="dropdown-item" href="#"><?= htmlspecialchars($kat) ?></a></li>
+                                <li><a class="dropdown-item" href="kategori.php?cat=<?= $kat['id'] ?>"><?= htmlspecialchars($kat['nama']) ?></a></li>
                             <?php endforeach; ?>
                         </ul>
                     </li>
@@ -60,6 +60,13 @@ include_once __DIR__ . '/session_bootstrap.php';
                     </li>
                 </ul>
                 <div class="d-flex align-items-center">
+                    <a href="#" class="btn btn-outline-primary me-2 d-flex align-items-center position-relative" id="notifBellBtn" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-bell"></i>
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notifCount" style="display:none;">0</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end p-0" id="notifDropdown" style="min-width:320px;max-width:400px;">
+                        <li class="p-3 text-center text-muted">Memuat notifikasi...</li>
+                    </ul>
                     <a href="chart_produk.php" class="btn btn-outline-primary me-2 d-flex align-items-center">
                         <i class="fas fa-shopping-cart me-1"></i> Keranjang
                     </a>
@@ -103,5 +110,23 @@ include_once __DIR__ . '/session_bootstrap.php';
     </main>
     <!-- Bootstrap JS Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var notifBtn = document.getElementById('notifBellBtn');
+        var notifDropdown = document.getElementById('notifDropdown');
+        var notifCount = document.getElementById('notifCount');
+        notifBtn.addEventListener('click', function(e) {
+            fetch('notifikasi.php')
+                .then(res => res.text())
+                .then(html => {
+                    notifDropdown.innerHTML = html;
+                    // Hitung jumlah notifikasi
+                    var count = notifDropdown.querySelectorAll('.notif-item').length;
+                    notifCount.textContent = count;
+                    notifCount.style.display = count > 0 ? '' : 'none';
+                });
+        });
+    });
+    </script>
 </body>
 </html>
