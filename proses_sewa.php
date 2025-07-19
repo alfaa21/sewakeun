@@ -1,6 +1,8 @@
 <?php
 include_once 'includes/session_bootstrap.php';
 include 'koneksi.php';
+require_once 'models/PromoModel.php';
+$PromoModel = new PromoModel($conn);
 
 if (!isset($_SESSION['user_id'])) {
     // Redirect to login page if user is not logged in
@@ -18,26 +20,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $tanggal_mulais = $_POST['tanggal_mulai'];
         $catatans = $_POST['catatan'];
         $alamat_pengiriman = mysqli_real_escape_string($conn, $_POST['alamat_pengiriman']);
-        $metode_pengiriman = mysqli_real_escape_string($conn, $_POST['metode_pengiriman'] ?? 'COD');
-        $metode_pembayaran = mysqli_real_escape_string($conn, $_POST['metode_pembayaran'] ?? '');
+        $metode_pengiriman = mysqli_real_escape_string($conn, $_POST['metode_pengiriman'] ?? 'COD'); // Ambil metode pengiriman dari form
+        $metode_pembayaran = mysqli_real_escape_string($conn, $_POST['metode_pembayaran'] ?? ''); // Ambil dari POST
         $tanggal_pesan = date('Y-m-d H:i:s');
         $status_transaksi = 'menunggu_verifikasi_admin';
         $total_biaya_semua = 0;
         $produk_data_list = [];
-        // Ambil claimed promo id jika ada
-        $claimed_promo_id = isset($_POST['claimed_promo_id']) ? intval($_POST['claimed_promo_id']) : 0;
-        $promo = null;
-        $diskon_promo = 0;
-        if ($claimed_promo_id) {
-            $q = mysqli_query($conn, "SELECT cp.*, p.* FROM claimed_promos cp JOIN promos p ON cp.promo_id = p.id WHERE cp.id = $claimed_promo_id AND cp.user_id = $user_id AND cp.status = 'belum_digunakan' AND p.status = 'aktif' AND p.tanggal_mulai <= CURDATE() AND p.tanggal_berakhir >= CURDATE()");
-            if ($promo = mysqli_fetch_assoc($q)) {
-                // validasi min transaksi setelah total_biaya_semua dihitung
-            } else {
-                $_SESSION['error_message'] = 'Promo tidak valid atau sudah digunakan.';
-                header('Location: chart_produk.php');
-                exit();
-            }
-        }
         for ($i = 0; $i < count($produk_ids); $i++) {
             $pid = intval($produk_ids[$i]);
             $qty = intval($quantities[$i]);
@@ -102,40 +90,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             // Simpan transaksi
-            $q = "INSERT INTO transaksi (id_user, id_produk, tanggal_mulai, lama_sewa, total_biaya, alamat_pengiriman, metode_pengiriman, metode_pembayaran, bukti_pembayaran, status_transaksi, catatan, tanggal_pesan) VALUES ($user_id, $pid, '$tgl_mulai', $lama, $subtotal, '$alamat_pengiriman', '$metode_pengiriman', '$metode_pembayaran', '', '$status_transaksi', '$catatan', '$tanggal_pesan')";
+            $tanggal_selesai = date('Y-m-d', strtotime("$tgl_mulai +$lama days"));
+            $q = "INSERT INTO transaksi (id_user, id_produk, jumlah, tanggal_mulai, lama_sewa, tanggal_selesai, total_biaya, alamat_pengiriman, metode_pengiriman, metode_pembayaran, bukti_pembayaran, status_transaksi, catatan, tanggal_pesan) VALUES ($user_id, $pid, $qty, '$tgl_mulai', $lama, '$tanggal_selesai', $subtotal, '$alamat_pengiriman', '$metode_pengiriman', '$metode_pembayaran', '', '$status_transaksi', '$catatan', '$tanggal_pesan')";
             $ins = mysqli_query($conn, $q);
             if (!$ins) { mysqli_rollback($conn); $_SESSION['error_message'] = "Gagal menyimpan transaksi: ".mysqli_error($conn); header('Location: chart_produk.php'); exit(); }
         }
 
-        // Hitung diskon promo jika ada
-        if ($promo) {
-            if ($total_biaya_semua < $promo['min_transaksi']) {
-                $_SESSION['error_message'] = 'Minimum transaksi untuk promo ini adalah Rp ' . number_format($promo['min_transaksi'], 0, ',', '.');
-                header('Location: chart_produk.php');
-                exit();
-            }
-            require_once 'models/PromoModel.php';
-            $promoModel = new PromoModel($conn);
-            $diskon_promo = $promoModel->calculateDiscount($promo, $total_biaya_semua);
-            $total_biaya_semua -= $diskon_promo;
-        }
         // Kurangi saldo user
         mysqli_query($conn, "UPDATE users SET saldo = saldo - $total_biaya_semua WHERE id = '$user_id'");
         // Ambil saldo setelah transaksi
         $saldo_setelah = mysqli_fetch_assoc(mysqli_query($conn, "SELECT saldo FROM users WHERE id = '$user_id'"))['saldo'];
         // Catat ke riwayat_saldo
         mysqli_query($conn, "INSERT INTO riwayat_saldo (user_id, tipe, nominal, keterangan, saldo_setelah) VALUES ('$user_id', 'sewa', $total_biaya_semua, 'Penyewaan produk multi-item', $saldo_setelah)");
-        // Catat penggunaan promo jika ada
-        if ($promo && $claimed_promo_id) {
-            // Ambil transaksi terakhir user (bisa lebih dari satu, catat ke transaksi pertama saja)
-            $trx = mysqli_query($conn, "SELECT id_transaksi FROM transaksi WHERE id_user = '$user_id' ORDER BY id_transaksi DESC LIMIT 1");
-            if ($row = mysqli_fetch_assoc($trx)) {
-                $promoModel->recordPromoUsage($promo['promo_id'], $user_id, $row['id_transaksi'], $diskon_promo);
-            }
-            // Update status claimed_promos
-            mysqli_query($conn, "UPDATE claimed_promos SET status = 'sudah_digunakan' WHERE id = $claimed_promo_id");
-        }
         mysqli_commit($conn);
+        unset($_SESSION['error_message']);
         $_SESSION['success_message'] = "Penyewaan multi-item berhasil! Total: Rp " . number_format($total_biaya_semua, 0, ',', '.') . ' (Saldo otomatis terpotong)';
         header('Location: user_dashboard.php');
         exit();
@@ -148,25 +116,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $lama_sewa = intval($_POST['lama_sewa']);
         $tanggal_mulai = mysqli_real_escape_string($conn, $_POST['tanggal_mulai']);
         $alamat_pengiriman = mysqli_real_escape_string($conn, $_POST['alamat_pengiriman']);
-        $metode_pengiriman = mysqli_real_escape_string($conn, $_POST['metode_pengiriman'] ?? 'COD');
-        $metode_pembayaran = mysqli_real_escape_string($conn, $_POST['metode_pembayaran'] ?? '');
+        $metode_pengiriman = mysqli_real_escape_string($conn, $_POST['metode_pengiriman'] ?? 'COD'); // Ambil metode pengiriman dari form
+        $metode_pembayaran = mysqli_real_escape_string($conn, $_POST['metode_pembayaran'] ?? ''); // Ambil dari POST
         $kurir_id = isset($_POST['kurir_id']) ? intval($_POST['kurir_id']) : 0;
         $catatan = mysqli_real_escape_string($conn, $_POST['catatan']);
-        $claimed_promo_id = isset($_POST['claimed_promo_id']) ? intval($_POST['claimed_promo_id']) : 0;
-        $promo = null;
-        $diskon_promo = 0;
-        if ($claimed_promo_id) {
-            $q = mysqli_query($conn, "SELECT cp.*, p.* FROM claimed_promos cp JOIN promos p ON cp.promo_id = p.id WHERE cp.id = $claimed_promo_id AND cp.user_id = $user_id AND cp.status = 'belum_digunakan' AND p.status = 'aktif' AND p.tanggal_mulai <= CURDATE() AND p.tanggal_berakhir >= CURDATE()");
-            if ($promo = mysqli_fetch_assoc($q)) {
-                // validasi min transaksi setelah total_amount dihitung
-            } else {
-                $_SESSION['error_message'] = 'Promo tidak valid atau sudah digunakan.';
-                header('Location: sewa_produk.php?id=' . $produk_id);
-                exit();
-            }
-        }
+        $kode_promo = isset($_POST['kode_promo']) ? trim($_POST['kode_promo']) : '';
+        $diskon = 0;
+        $promo_id = null;
+
         // Ambil detail produk dari database
-        $query_produk = mysqli_query($conn, "SELECT nama, harga, stock, max_duration, duration_unit FROM produk WHERE id=$produk_id");
+        $query_produk = mysqli_query($conn, "SELECT nama, harga, stock, max_duration, duration_unit, kategori_id FROM produk WHERE id=$produk_id");
         $product_data = mysqli_fetch_assoc($query_produk);
 
         if (!$product_data) {
@@ -205,17 +164,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $total_amount = $product_price * $quantity * $lama_sewa + $biaya_kurir;
-        // Hitung diskon promo jika ada
-        if ($promo) {
-            if ($total_amount < $promo['min_transaksi']) {
-                $_SESSION['error_message'] = 'Minimum transaksi untuk promo ini adalah Rp ' . number_format($promo['min_transaksi'], 0, ',', '.');
-                header('Location: sewa_produk.php?id=' . $produk_id);
-                exit();
+        // Proses promo berdasarkan pilihan user
+        $promo_id = isset($_POST['pilih_promo']) && $_POST['pilih_promo'] !== '' ? intval($_POST['pilih_promo']) : null;
+        $diskon = 0;
+        $best_promo = null;
+        if ($promo_id) {
+            // Ambil data promo yang dipilih user
+            $promo_query = mysqli_query($conn, "SELECT * FROM promos WHERE id = $promo_id AND status = 'aktif' AND tanggal_mulai <= CURDATE() AND tanggal_berakhir >= CURDATE() AND (limit_penggunaan IS NULL OR penggunaan_sekarang < limit_penggunaan)");
+            $promo = mysqli_fetch_assoc($promo_query);
+            if ($promo) {
+                // Validasi syarat promo
+                if ($total_amount >= $promo['min_transaksi'] &&
+                    (!$promo['kategori_id'] || $promo['kategori_id'] == $product_data['kategori_id']) &&
+                    (!$promo['produk_id'] || $promo['produk_id'] == $produk_id)) {
+                    // Cek apakah user sudah pernah pakai promo ini di promo_usage
+                    $cek_usage = mysqli_query($conn, "SELECT COUNT(*) as used FROM promo_usage WHERE promo_id = {$promo['id']} AND user_id = $user_id");
+                    $usage = mysqli_fetch_assoc($cek_usage);
+                    if ($usage['used'] == 0) {
+                        $diskon = $PromoModel->calculateDiscount($promo, $total_amount);
+                        $best_promo = $promo;
+                        $total_amount -= $diskon;
+                    }
+                }
             }
-            require_once 'models/PromoModel.php';
-            $promoModel = new PromoModel($conn);
-            $diskon_promo = $promoModel->calculateDiscount($promo, $total_amount);
-            $total_amount -= $diskon_promo;
+        }
+
+        // Cek saldo user
+        $saldo_user = mysqli_fetch_assoc(mysqli_query($conn, "SELECT saldo FROM users WHERE id='$user_id'"));
+        $saldo_user = $saldo_user ? floatval($saldo_user['saldo']) : 0;
+        if ($saldo_user < $total_amount) {
+            $_SESSION['error_message'] = "Saldo Anda tidak cukup untuk melakukan penyewaan ini.";
+            header('Location: sewa_produk.php?id=' . $produk_id);
+            exit();
         }
 
         mysqli_begin_transaction($conn);
@@ -230,23 +210,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $catatan_transaksi = ($catatan ? $catatan.' | ' : '') . 'Kurir: ' . $nama_kurir;
         }
 
-        $query = "INSERT INTO transaksi (id_user, id_produk, tanggal_mulai, lama_sewa, total_biaya, alamat_pengiriman, metode_pengiriman, metode_pembayaran, bukti_pembayaran, status_transaksi, catatan, tanggal_pesan) VALUES ($user_id, $produk_id, '$tanggal_mulai', $lama_sewa, $total_amount, '$alamat_pengiriman', '$metode_pengiriman', '$metode_pembayaran', '', '$status_transaksi', '$catatan_transaksi', '$tanggal_pesan')";
+        $tanggal_selesai = date('Y-m-d', strtotime("$tanggal_mulai +$lama_sewa days"));
+        $query = "INSERT INTO transaksi (id_user, id_produk, jumlah, tanggal_mulai, lama_sewa, tanggal_selesai, total_biaya, alamat_pengiriman, metode_pengiriman, metode_pembayaran, bukti_pembayaran, status_transaksi, catatan, tanggal_pesan) VALUES ($user_id, $produk_id, $quantity, '$tanggal_mulai', $lama_sewa, '$tanggal_selesai', $total_amount, '$alamat_pengiriman', '$metode_pengiriman', '$metode_pembayaran', '', '$status_transaksi', '$catatan_transaksi', '$tanggal_pesan')";
         $insert = mysqli_query($conn, $query);
 
         if ($insert) {
+            $id_transaksi = mysqli_insert_id($conn);
+            // Catat penggunaan promo jika ada
+            if ($best_promo) {
+                $PromoModel->recordPromoUsage($best_promo['id'], $user_id, $id_transaksi, $diskon);
+            }
             // Kurangi saldo user
             mysqli_query($conn, "UPDATE users SET saldo = saldo - $total_amount WHERE id = '$user_id'");
             // Ambil saldo setelah transaksi
             $saldo_setelah = mysqli_fetch_assoc(mysqli_query($conn, "SELECT saldo FROM users WHERE id = '$user_id'"))['saldo'];
             // Catat ke riwayat_saldo
             mysqli_query($conn, "INSERT INTO riwayat_saldo (user_id, tipe, nominal, keterangan, saldo_setelah) VALUES ('$user_id', 'sewa', $total_amount, 'Penyewaan produk ID $produk_id', $saldo_setelah)");
-            // Catat penggunaan promo jika ada
-            if ($promo && $claimed_promo_id) {
-                $promoModel->recordPromoUsage($promo['promo_id'], $user_id, mysqli_insert_id($conn), $diskon_promo);
-                // Update status claimed_promos
-                mysqli_query($conn, "UPDATE claimed_promos SET status = 'sudah_digunakan' WHERE id = $claimed_promo_id");
-            }
             mysqli_commit($conn);
+            unset($_SESSION['error_message']);
             $_SESSION['success_message'] = "Penyewaan berhasil! Total: Rp " . number_format($total_amount, 0, ',', '.') . ' (Saldo otomatis terpotong)';
             header('Location: user_dashboard.php');
             exit();

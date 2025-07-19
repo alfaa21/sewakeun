@@ -1,6 +1,11 @@
 <?php
 include 'koneksi.php';
 session_start();
+if (!function_exists('safe')) {
+    function safe($arr, $key, $fallback = '-') {
+        return isset($arr[$key]) && $arr[$key] !== null ? htmlspecialchars($arr[$key]) : $fallback;
+    }
+}
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit();
@@ -31,10 +36,30 @@ while($k = mysqli_fetch_assoc($kurir_query)) {
     $kurir_list[] = $k;
 }
 
+// Cek dan update status serta denda keterlambatan otomatis
+$today = date('Y-m-d');
+$cek_telat = mysqli_query($conn, "SELECT t.id_transaksi, t.tanggal_selesai, t.id_produk, t.denda, t.status_transaksi, p.harga FROM transaksi t JOIN produk p ON t.id_produk=p.id WHERE t.id_user='$user_id' AND t.status_transaksi='masa_sewa'");
+while($row = mysqli_fetch_assoc($cek_telat)) {
+    if ($today > $row['tanggal_selesai']) {
+        $days_late = (strtotime($today) - strtotime($row['tanggal_selesai'])) / 86400;
+        $days_late = max(1, intval($days_late));
+        $denda = 0.3 * floatval($row['harga']) * $days_late;
+        mysqli_query($conn, "UPDATE transaksi SET status_transaksi='telat_pengembalian', denda=$denda WHERE id_transaksi=" . intval($row['id_transaksi']));
+    }
+}
+
 // PROSES TOP UP SALDO (dan proses lain yang pakai header())
 if (isset($_POST['topup_saldo'])) {
     $nominal = floatval($_POST['nominal']);
     $metode = mysqli_real_escape_string($conn, $_POST['metode']);
+    // Pastikan user masih ada di tabel users
+    $cek_user = mysqli_query($conn, "SELECT id FROM users WHERE id = '$user_id'");
+    if (mysqli_num_rows($cek_user) == 0) {
+        $_SESSION['message'] = 'User tidak ditemukan. Silakan login ulang.';
+        $_SESSION['message_type'] = 'danger';
+        header('Location: user_dashboard.php');
+        exit();
+    }
     if ($nominal > 0) {
         // Update saldo user
         $update = mysqli_query($conn, "UPDATE users SET saldo = saldo + $nominal WHERE id = '$user_id'");
@@ -141,18 +166,24 @@ if (isset($_POST['confirm_received']) && isset($_POST['transaksi_id'])) {
 if (isset($_POST['batalkan_transaksi']) && isset($_POST['transaksi_id'])) {
     $transaksi_id = intval($_POST['transaksi_id']);
     $user_id = $_SESSION['user_id'];
-    // Pastikan transaksi milik user dan status menunggu konfirmasi
-    $cek = mysqli_query($conn, "SELECT id_transaksi, total_biaya FROM transaksi WHERE id_transaksi=$transaksi_id AND id_user=$user_id AND status_transaksi='menunggu_verifikasi_admin'");
+    // Ambil transaksi milik user yang belum selesai/dibatalkan
+    $cek = mysqli_query($conn, "SELECT id_transaksi, total_biaya, id_produk, jumlah, status_transaksi FROM transaksi WHERE id_transaksi=$transaksi_id AND id_user=$user_id AND status_transaksi NOT IN ('selesai','dibatalkan')");
     if ($row = mysqli_fetch_assoc($cek)) {
         $total_biaya = floatval($row['total_biaya']);
+        $id_produk = intval($row['id_produk']);
+        $jumlah = intval($row['jumlah']);
         // Update status transaksi
         mysqli_query($conn, "UPDATE transaksi SET status_transaksi='dibatalkan' WHERE id_transaksi=$transaksi_id");
         // Kembalikan saldo user
         mysqli_query($conn, "UPDATE users SET saldo = saldo + $total_biaya WHERE id = '$user_id'");
+        // Kembalikan stok produk
+        if ($id_produk && $jumlah) {
+            mysqli_query($conn, "UPDATE produk SET stock = stock + $jumlah WHERE id = $id_produk");
+        }
         // Catat ke riwayat_saldo
         $saldo_setelah = mysqli_fetch_assoc(mysqli_query($conn, "SELECT saldo FROM users WHERE id = '$user_id'"))['saldo'];
         mysqli_query($conn, "INSERT INTO riwayat_saldo (user_id, tipe, nominal, keterangan, saldo_setelah) VALUES ('$user_id', 'refund', $total_biaya, 'Refund pembatalan transaksi ID $transaksi_id', $saldo_setelah)");
-        $_SESSION['success_message'] = 'Transaksi berhasil dibatalkan dan saldo Anda telah dikembalikan.';
+        $_SESSION['success_message'] = 'Transaksi berhasil dibatalkan, saldo dan stok produk telah dikembalikan.';
     } else {
         $_SESSION['error_message'] = 'Transaksi tidak valid untuk dibatalkan.';
     }
@@ -189,19 +220,63 @@ if (isset($_POST['return_item']) && isset($_POST['transaksi_id'])) {
     exit();
 }
 
-if (isset($_POST['submit_review']) && isset($_POST['review_product_id'])) {
+if (isset($_POST['submit_review']) && isset($_POST['review_product_id']) && isset($_POST['transaksi_id'])) {
     $product_id = intval($_POST['review_product_id']);
     $user_id = $_SESSION['user_id'];
+    $transaksi_id = intval($_POST['transaksi_id']);
     $rating = intval($_POST['rating']);
     $comment = mysqli_real_escape_string($conn, $_POST['comment']);
-    // Cegah review ganda
-    $cek = mysqli_query($conn, "SELECT id FROM reviews WHERE user_id=$user_id AND product_id=$product_id");
+    // Cegah review ganda per transaksi
+    $cek = mysqli_query($conn, "SELECT id FROM reviews WHERE user_id=$user_id AND product_id=$product_id AND id_transaksi=$transaksi_id");
     if (mysqli_num_rows($cek) == 0 && $rating >= 1 && $rating <= 5) {
-        mysqli_query($conn, "INSERT INTO reviews (product_id, user_id, rating, comment) VALUES ($product_id, $user_id, $rating, '$comment')");
+        mysqli_query($conn, "INSERT INTO reviews (product_id, user_id, id_transaksi, rating, comment) VALUES ($product_id, $user_id, $transaksi_id, $rating, '$comment')");
         $_SESSION['success_message'] = 'Review berhasil dikirim!';
     } else {
-        $_SESSION['error_message'] = 'Anda sudah pernah mereview produk ini atau rating tidak valid.';
+        $_SESSION['error_message'] = 'Anda sudah pernah mereview produk ini untuk transaksi ini atau rating tidak valid.';
     }
+    header('Location: user_dashboard.php');
+    exit();
+}
+
+
+if (isset($_POST['bayar_denda']) && isset($_POST['transaksi_id_denda'])) {
+    $transaksi_id = intval($_POST['transaksi_id_denda']);
+    $user_id = $_SESSION['user_id'];
+    $q = mysqli_query($conn, "SELECT t.denda, t.id_produk, p.admin_id FROM transaksi t JOIN produk p ON t.id_produk=p.id WHERE t.id_transaksi=$transaksi_id AND t.id_user=$user_id AND t.status_transaksi='telat_pengembalian'");
+    $trx = mysqli_fetch_assoc($q);
+    if ($trx) {
+        $denda = floatval($trx['denda']);
+        $admin_id = intval($trx['admin_id']);
+        $saldo_user = mysqli_fetch_assoc(mysqli_query($conn, "SELECT saldo FROM users WHERE id='$user_id'"));
+        $saldo_user = $saldo_user ? floatval($saldo_user['saldo']) : 0;
+        if ($saldo_user >= $denda) {
+          
+            mysqli_query($conn, "UPDATE users SET saldo = saldo - $denda WHERE id = '$user_id'");
+           
+            mysqli_query($conn, "UPDATE transaksi SET status_transaksi='denda_dibayar' WHERE id_transaksi=$transaksi_id");
+           
+            $saldo_setelah = mysqli_fetch_assoc(mysqli_query($conn, "SELECT saldo FROM users WHERE id = '$user_id'"))['saldo'];
+            mysqli_query($conn, "INSERT INTO riwayat_saldo (user_id, tipe, nominal, keterangan, saldo_setelah) VALUES ('$user_id', 'denda', $denda, 'Pembayaran denda keterlambatan transaksi ID $transaksi_id', $saldo_setelah)");
+            $_SESSION['success_message'] = 'Denda berhasil dibayar!';
+        } else {
+            $_SESSION['error_message'] = 'Saldo Anda tidak cukup untuk membayar denda. Silakan top up saldo.';
+        }
+    }
+    header('Location: user_dashboard.php');
+    exit();
+}
+
+
+if (isset($_POST['return_item_telat']) && isset($_POST['transaksi_id'])) {
+    $transaksi_id = intval($_POST['transaksi_id']);
+    $trx = mysqli_fetch_assoc(mysqli_query($conn, "SELECT denda, id_user FROM transaksi WHERE id_transaksi=$transaksi_id"));
+    $denda = $trx ? floatval($trx['denda']) : 0;
+    $user_id = $trx ? intval($trx['id_user']) : 0;
+    // Potong saldo user
+    mysqli_query($conn, "UPDATE users SET saldo = saldo - $denda WHERE id = '$user_id'");
+    // Update status transaksi
+    mysqli_query($conn, "UPDATE transaksi SET status_transaksi='dikirim_kembali' WHERE id_transaksi=$transaksi_id");
+    $_SESSION['success_message'] = 'Pengembalian barang dan pembayaran denda berhasil diproses.';
     header('Location: user_dashboard.php');
     exit();
 }
@@ -336,15 +411,14 @@ for ($i = 5; $i >= 0; $i--) {
             <div class="card shadow-sm mb-4">
                 <div class="card-body text-center">
                     <img src="<?= htmlspecialchars($user_data['foto_profil'] ?? 'assets/images/default-avatar.png') ?>" class="rounded-circle mb-3" alt="User Avatar" style="width: 100px; height: 100px; object-fit: cover;">
-                    <h5><?= htmlspecialchars($user_data['username']) ?></h5>
-                    <p class="text-muted"><?= htmlspecialchars($user_data['email']) ?></p>
+                    <h5><?= safe($user_data, 'username') ?></h5>
+                    <p class="text-muted"><?= safe($user_data, 'email') ?></p>
                     <a href="#" class="btn btn-primary btn-sm mt-2" data-bs-toggle="modal" data-bs-target="#editProfileModal">Edit Profil</a>
                 </div>
             </div>
             <div class="list-group shadow-sm">
                 <a href="#overview" class="list-group-item list-group-item-action active" data-bs-toggle="tab" data-bs-target="#overview" role="tab">Overview</a>
                 <a href="#my-transactions" class="list-group-item list-group-item-action" data-bs-toggle="tab" data-bs-target="#my-transactions" role="tab">Transaksi Saya</a>
-                <a href="#payment-proofs" class="list-group-item list-group-item-action" data-bs-toggle="tab" data-bs-target="#payment-proofs" role="tab">Upload Bukti Pembayaran</a>
                 <a href="#topup-history" class="list-group-item list-group-item-action" data-bs-toggle="tab" data-bs-target="#topup-history" role="tab">Riwayat Top Up</a>
             </div>
         </div>
@@ -354,14 +428,68 @@ for ($i = 5; $i >= 0; $i--) {
             <div class="tab-content">
                 <div class="tab-pane fade show active" id="overview" role="tabpanel">
                     <div class="card shadow-sm mb-4">
-                        <div class="card-header bg-primary text-white">Selamat Datang, <?= htmlspecialchars($user_data['username']) ?>!</div>
+                        <div class="card-header bg-primary text-white">Selamat Datang, <?= safe($user_data, 'username') ?>!</div>
                         <div class="card-body">
                             <p>Ini adalah dashboard Anda. Di sini Anda bisa melihat ringkasan aktivitas penyewaan Anda, mengelola transaksi, dan mengunggah bukti pembayaran.</p>
                             <h5 class="mt-4">Informasi Profil Anda:</h5>
-                            <p><strong>Username:</strong> <?= htmlspecialchars($user_data['username']) ?></p>
-                            <p><strong>Email:</strong> <?= htmlspecialchars($user_data['email']) ?></p>
-                            <p><strong>No. Telepon:</strong> <?= htmlspecialchars($user_data['no_hp']) ?? '-' ?></p>
-                            <p><strong>Alamat:</strong> <?= htmlspecialchars($user_data['alamat']) ?? '-' ?></p>
+                            <p><strong>Username:</strong> <?= safe($user_data, 'username') ?></p>
+                            <p><strong>Email:</strong> <?= safe($user_data, 'email') ?></p>
+                            <p><strong>No. Telepon:</strong> <?= safe($user_data, 'no_hp') ?? '-' ?></p>
+                            <p><strong>Alamat:</strong> <?= safe($user_data, 'alamat') ?? '-' ?></p>
+                        </div>
+                    </div>
+
+                    <!-- Card Saldo -->
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                            <span>Saldo Anda</span>
+                            <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#topupModal">Top Up Saldo</button>
+                        </div>
+                        <div class="card-body">
+                            <h3 class="text-primary">Rp <?= number_format($user_data['saldo'] ?? 0, 0, ',', '.') ?></h3>
+                            <?php
+                            // Ringkasan saldo
+                            $total_topup = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(nominal) AS total FROM riwayat_saldo WHERE user_id='$user_id' AND tipe='topup'"))['total'] ?? 0;
+                            $total_pemakaian = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(nominal) AS total FROM riwayat_saldo WHERE user_id='$user_id' AND tipe IN ('sewa','denda')"))['total'] ?? 0;
+                            ?>
+                            <div class="mt-2">
+                                <span class="badge bg-success">Total Top Up: Rp <?= number_format($total_topup,0,',','.') ?></span>
+                                <span class="badge bg-danger">Total Pemakaian: Rp <?= number_format($total_pemakaian,0,',','.') ?></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Riwayat Saldo -->
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header bg-secondary text-white">Riwayat Saldo</div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Tanggal</th>
+                                            <th>Tipe</th>
+                                            <th>Nominal</th>
+                                            <th>Keterangan</th>
+                                            <th>Saldo Setelah</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php
+                                        $saldo_query = mysqli_query($conn, "SELECT * FROM riwayat_saldo WHERE user_id='$user_id' ORDER BY tanggal DESC");
+                                        while($s = mysqli_fetch_assoc($saldo_query)):
+                                        ?>
+                                        <tr>
+                                            <td><?= htmlspecialchars(date('d M Y H:i', strtotime($s['tanggal']))) ?></td>
+                                            <td><span class="badge bg-<?= $s['tipe']=='topup'?'success':($s['tipe']=='sewa'?'primary':($s['tipe']=='denda'?'danger':'secondary')) ?>"><?= htmlspecialchars(ucfirst($s['tipe'])) ?></span></td>
+                                            <td>Rp <?= number_format($s['nominal'],0,',','.') ?></td>
+                                            <td><?= htmlspecialchars($s['keterangan']) ?></td>
+                                            <td>Rp <?= number_format($s['saldo_setelah'],0,',','.') ?></td>
+                                        </tr>
+                                        <?php endwhile; ?>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -376,11 +504,13 @@ for ($i = 5; $i >= 0; $i--) {
                                         <tr>
                                             <th>ID Transaksi</th>
                                             <th>Produk</th>
+                                            <th>Jumlah</th>
                                             <th>Tanggal Mulai</th>
                                             <th>Lama Sewa</th>
                                             <th>Total Biaya</th>
                                             <th>Status</th>
                                             <th>Aksi</th>
+                                            <th>Pesan</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -393,6 +523,7 @@ for ($i = 5; $i >= 0; $i--) {
                                                     <img src="<?= htmlspecialchars($t['product_image']) ?>" alt="" style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px; margin-right: 10px;">
                                                     <?= htmlspecialchars($t['product_name']) ?>
                                                 </td>
+                                                <td><?= htmlspecialchars($t['jumlah'] ?? 1) ?></td>
                                                 <td><?= htmlspecialchars(date('d M Y', strtotime($t['tanggal_mulai']))) ?></td>
                                                 <td><?= htmlspecialchars($t['lama_sewa']) ?> hari</td>
                                                 <td>Rp <?= number_format($t['total_biaya'],0,',','.') ?></td>
@@ -458,35 +589,7 @@ for ($i = 5; $i >= 0; $i--) {
                                                     </span>
                                                 </td>
                                                 <td>
-                                                    <?php if ($t['status_transaksi'] == 'pending_pembayaran'): ?>
-                                                        <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#uploadBuktiModal<?= $modal_id ?>">Upload Bukti</button>
-                                                        <!-- Modal Upload Bukti Pembayaran -->
-                                                        <div class="modal fade" id="uploadBuktiModal<?= $modal_id ?>" tabindex="-1" aria-labelledby="uploadBuktiLabel<?= $modal_id ?>" aria-hidden="true">
-                                                          <div class="modal-dialog">
-                                                            <div class="modal-content">
-                                                              <form action="upload_payment_proof.php" method="POST" enctype="multipart/form-data">
-                                                                <div class="modal-header">
-                                                                  <h5 class="modal-title" id="uploadBuktiLabel<?= $modal_id ?>">Upload Bukti Pembayaran</h5>
-                                                                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                                </div>
-                                                                <div class="modal-body">
-                                                                  <input type="hidden" name="transaction_id" value="<?= $t['id_transaksi'] ?>">
-                                                                  <div class="mb-3">
-                                                                    <label for="buktiPembayaran<?= $modal_id ?>" class="form-label">Pilih file gambar bukti pembayaran</label>
-                                                                    <input type="file" class="form-control" id="buktiPembayaran<?= $modal_id ?>" name="proof_of_payment" accept="image/*" required>
-                                                                    <small class="text-muted">Hanya file gambar (JPG, PNG, JPEG, GIF, max 5MB).</small>
-                                                                  </div>
-                                                                </div>
-                                                                <div class="modal-footer">
-                                                                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                                                                  <button type="submit" class="btn btn-success">Upload</button>
-                                                                </div>
-                                                              </form>
-                                                            </div>
-                                                          </div>
-                                                        </div>
-                                                        <?php $modal_id++; ?>
-                                                    <?php elseif ($t['status_transaksi'] == 'menunggu_verifikasi_admin'): ?>
+                                                    <?php if ($t['status_transaksi'] == 'menunggu_verifikasi_admin'): ?>
                                                         <form method="post" style="display:inline;">
                                                             <input type="hidden" name="transaksi_id" value="<?= $t['id_transaksi'] ?>">
                                                             <button type="submit" name="batalkan_transaksi" class="btn btn-sm btn-danger" onclick="return confirm('Batalkan transaksi ini?')">Batalkan</button>
@@ -573,12 +676,120 @@ for ($i = 5; $i >= 0; $i--) {
                                                         });
                                                         </script>
                                                     <?php elseif ($t['status_transaksi'] == 'telat_pengembalian'): ?>
-                                                        <button class="btn btn-sm btn-danger" disabled>Telat & Denda</button>
-                                                    <?php elseif ($t['status_transaksi'] == 'denda_dibayar'): ?>
-                                                        <button class="btn btn-sm btn-success" disabled>Denda Dibayar</button>
-                                                    <?php elseif ($t['status_transaksi'] == 'selesai'): ?>
-                                                        <?php if (!sudah_review($conn, $user_id, $t['id_produk'])): ?>
-                                                            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalReview<?= $t['id_transaksi'] ?>">Review Produk</button>
+                                                        <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#modalTelat<?= $t['id_transaksi'] ?>">Kembalikan Barang</button>
+                                                        <div class="modal fade" id="modalTelat<?= $t['id_transaksi'] ?>" tabindex="-1" aria-labelledby="modalTelatLabel<?= $t['id_transaksi'] ?>" aria-hidden="true">
+                                                          <div class="modal-dialog">
+                                                            <div class="modal-content">
+                                                              <form method="post">
+                                                                <div class="modal-header">
+                                                                  <h5 class="modal-title" id="modalTelatLabel<?= $t['id_transaksi'] ?>">Pengembalian Barang (Telat)</h5>
+                                                                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                                </div>
+                                                                <div class="modal-body">
+                                                                  <input type="hidden" name="transaksi_id" value="<?= $t['id_transaksi'] ?>">
+                                                                  <div class="alert alert-danger">
+                                                                    <strong>Denda Keterlambatan:</strong><br>
+                                                                    Anda terlambat mengembalikan barang.<br>
+                                                                    Denda keterlambatan: <b>Rp <?= number_format($t['denda'],0,',','.') ?></b>
+                                                                  </div>
+                                                                  <div class="mb-3">
+                                                                    <label class="form-label">Metode Pengembalian</label><br>
+                                                                    <div class="form-check form-check-inline">
+                                                                      <input class="form-check-input" type="radio" name="metode_pengembalian" id="telat_cod<?= $t['id_transaksi'] ?>" value="COD" checked>
+                                                                      <label class="form-check-label" for="telat_cod<?= $t['id_transaksi'] ?>">COD (Serahkan langsung)</label>
+                                                                    </div>
+                                                                    <div class="form-check form-check-inline">
+                                                                      <input class="form-check-input" type="radio" name="metode_pengembalian" id="telat_kurir<?= $t['id_transaksi'] ?>" value="Kurir">
+                                                                      <label class="form-check-label" for="telat_kurir<?= $t['id_transaksi'] ?>">Kurir</label>
+                                                                    </div>
+                                                                  </div>
+                                                                  <div class="mb-3" id="groupKurirTelat<?= $t['id_transaksi'] ?>" style="display:none;">
+                                                                    <label for="kurir_id_telat<?= $t['id_transaksi'] ?>" class="form-label">Pilih Kurir</label>
+                                                                    <select class="form-select" name="kurir_id" id="kurir_id_telat<?= $t['id_transaksi'] ?>">
+                                                                      <option value="">Pilih Kurir</option>
+                                                                      <?php foreach($kurir_list as $kurir): ?>
+                                                                        <option value="<?= $kurir['id'] ?>" data-biaya="<?= $kurir['biaya'] ?>"><?= htmlspecialchars($kurir['nama']) ?> (Rp <?= number_format($kurir['biaya'],0,',','.') ?>)</option>
+                                                                      <?php endforeach; ?>
+                                                                    </select>
+                                                                  </div>
+                                                                  <div class="mb-3" id="biayaKurirInfoTelat<?= $t['id_transaksi'] ?>" style="display:none;">
+                                                                    <label class="form-label">Biaya Ongkir</label>
+                                                                    <div class="alert alert-info">Rp <span id="biayaKurirTelat<?= $t['id_transaksi'] ?>">0</span></div>
+                                                                  </div>
+                                                                </div>
+                                                                <div class="modal-footer">
+                                                                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                                                                  <button type="submit" name="return_item_telat" class="btn btn-warning">Kembalikan & Bayar Denda</button>
+                                                                </div>
+                                                              </form>
+                                                            </div>
+                                                          </div>
+                                                        </div>
+                                                        <script>
+                                                        document.addEventListener('DOMContentLoaded', function() {
+                                                          var metodeRadios = document.querySelectorAll('input[name=\"metode_pengembalian\"]');
+                                                          var groupKurir = document.getElementById('groupKurirTelat<?= $t['id_transaksi'] ?>');
+                                                          var biayaKurirInfo = document.getElementById('biayaKurirInfoTelat<?= $t['id_transaksi'] ?>');
+                                                          var selectKurir = document.getElementById('kurir_id_telat<?= $t['id_transaksi'] ?>');
+                                                          var biayaKurirSpan = document.getElementById('biayaKurirTelat<?= $t['id_transaksi'] ?>');
+                                                          function updateKurirDisplay() {
+                                                            if(document.getElementById('telat_kurir<?= $t['id_transaksi'] ?>').checked) {
+                                                              groupKurir.style.display = 'block';
+                                                              biayaKurirInfo.style.display = 'block';
+                                                            } else {
+                                                              groupKurir.style.display = 'none';
+                                                              biayaKurirInfo.style.display = 'none';
+                                                            }
+                                                          }
+                                                          metodeRadios.forEach(function(radio) {
+                                                            radio.addEventListener('change', updateKurirDisplay);
+                                                          });
+                                                          selectKurir.addEventListener('change', function() {
+                                                            var biaya = selectKurir.options[selectKurir.selectedIndex].getAttribute('data-biaya') || 0;
+                                                            biayaKurirSpan.textContent = biaya.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+                                                          });
+                                                          updateKurirDisplay();
+                                                        });
+                                                        </script>
+                                                    <?php elseif ($t['status_transaksi'] == 'telat_pengembalian'): ?>
+                                                        <button class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#modalBayarDenda<?= $modal_id ?>">Bayar Denda</button>
+                                                        <!-- Modal Bayar Denda -->
+                                                        <div class="modal fade" id="modalBayarDenda<?= $modal_id ?>" tabindex="-1" aria-labelledby="modalBayarDendaLabel<?= $modal_id ?>" aria-hidden="true">
+                                                          <div class="modal-dialog">
+                                                            <div class="modal-content">
+                                                              <form method="post">
+                                                                <div class="modal-header">
+                                                                  <h5 class="modal-title" id="modalBayarDendaLabel<?= $modal_id ?>">Pembayaran Denda Keterlambatan</h5>
+                                                                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                                </div>
+                                                                <div class="modal-body">
+                                                                  <input type="hidden" name="transaksi_id_denda" value="<?= $t['id_transaksi'] ?>">
+                                                                  <div class="mb-3">
+                                                                    <label class="form-label">Nominal Denda</label>
+                                                                    <div class="alert alert-danger">Rp <?= number_format($t['denda'],0,',','.') ?></div>
+                                                                  </div>
+                                                                  <div class="mb-3">
+                                                                    <label class="form-label">Saldo Anda</label>
+                                                                    <div class="alert alert-info">Rp <?= number_format($user_data['saldo'],0,',','.') ?></div>
+                                                                  </div>
+                                                                  <div class="mb-2 text-muted small">Pastikan saldo Anda cukup untuk membayar denda. Jika tidak, silakan top up saldo terlebih dahulu.</div>
+                                                                </div>
+                                                                <div class="modal-footer">
+                                                                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                                                                  <button type="submit" name="bayar_denda" class="btn btn-danger">Bayar Denda</button>
+                                                                </div>
+                                                              </form>
+                                                            </div>
+                                                          </div>
+                                                        </div>
+                                                        <?php $modal_id++; ?>
+                                                    <?php elseif ($t['status_transaksi'] == 'masa_sewa'): ?>
+                                                        <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#modalReturn<?= $t['id_transaksi'] ?>">Kembalikan Barang</button>
+                                                    <?php endif; ?>
+                                                    
+                                                    <?php if ($t['status_transaksi'] == 'selesai'): ?>
+                                                        <?php if (!sudah_review($conn, $user_id, $t['id_produk'], $t['id_transaksi'])): ?>
+                                                            <button class="btn btn-sm btn-info mt-1" data-bs-toggle="modal" data-bs-target="#modalReview<?= $t['id_transaksi'] ?>">Review Produk</button>
                                                             <!-- Modal Review Produk -->
                                                             <div class="modal fade" id="modalReview<?= $t['id_transaksi'] ?>" tabindex="-1" aria-labelledby="modalReviewLabel<?= $t['id_transaksi'] ?>" aria-hidden="true">
                                                               <div class="modal-dialog">
@@ -590,18 +801,21 @@ for ($i = 5; $i >= 0; $i--) {
                                                                     </div>
                                                                     <div class="modal-body">
                                                                       <input type="hidden" name="review_product_id" value="<?= $t['id_produk'] ?>">
-                                                                      <div class="mb-3 text-center">
-                                                                        <label class="form-label">Beri Rating:</label><br>
-                                                                        <div class="star-rating" style="font-size:2rem;">
-                                                                          <?php for($i=1;$i<=5;$i++): ?>
-                                                                            <span class="star" data-value="<?= $i ?>" style="cursor:pointer;">&#9733;</span>
-                                                                          <?php endfor; ?>
+                                                                      <input type="hidden" name="transaksi_id" value="<?= $t['id_transaksi'] ?>">
+                                                                      <div class="mb-3">
+                                                                        <label class="form-label">Rating</label><br>
+                                                                        <div class="star-rating">
+                                                                            <input type="hidden" name="rating" id="rating_value<?= $t['id_transaksi'] ?>" value="5">
+                                                                            <i class="fas fa-star star-5" data-rating="5"></i>
+                                                                            <i class="fas fa-star star-4" data-rating="4"></i>
+                                                                            <i class="fas fa-star star-3" data-rating="3"></i>
+                                                                            <i class="fas fa-star star-2" data-rating="2"></i>
+                                                                            <i class="fas fa-star star-1" data-rating="1"></i>
                                                                         </div>
-                                                                        <input type="hidden" name="rating" id="ratingInput<?= $t['id_transaksi'] ?>" value="0" required>
                                                                       </div>
                                                                       <div class="mb-3">
-                                                                        <label for="comment<?= $t['id_transaksi'] ?>" class="form-label">Komentar</label>
-                                                                        <textarea class="form-control" id="comment<?= $t['id_transaksi'] ?>" name="comment" rows="3" placeholder="Tulis komentar..." required></textarea>
+                                                                        <label class="form-label">Komentar</label>
+                                                                        <textarea name="comment" class="form-control" rows="3" placeholder="Tulis ulasan Anda..." required></textarea>
                                                                       </div>
                                                                     </div>
                                                                     <div class="modal-footer">
@@ -612,25 +826,65 @@ for ($i = 5; $i >= 0; $i--) {
                                                                 </div>
                                                               </div>
                                                             </div>
+                                                            <style>
+                                                                .star-rating {
+                                                                    direction: rtl;
+                                                                    display: inline-block;
+                                                                    padding: 20px;
+                                                                }
+                                                                .star-rating i {
+                                                                    font-size: 25px;
+                                                                    color: #ddd;
+                                                                    cursor: pointer;
+                                                                    transition: color 0.2s;
+                                                                    margin-left: 5px;
+                                                                }
+                                                                .star-rating i:hover,
+                                                                .star-rating i:hover ~ i {
+                                                                    color: #ffd700;
+                                                                }
+                                                                .star-rating i.active {
+                                                                    color: #ffd700;
+                                                                }
+                                                            </style>
                                                             <script>
-                                                            document.addEventListener('DOMContentLoaded', function() {
-                                                              var stars = document.querySelectorAll('#modalReview<?= $t['id_transaksi'] ?> .star');
-                                                              var ratingInput = document.getElementById('ratingInput<?= $t['id_transaksi'] ?>');
-                                                              stars.forEach(function(star) {
-                                                                star.addEventListener('click', function() {
-                                                                  var val = this.getAttribute('data-value');
-                                                                  ratingInput.value = val;
-                                                                  stars.forEach(function(s, idx) {
-                                                                    if (idx < val) s.style.color = '#ffc107'; else s.style.color = '#ccc';
-                                                                  });
+                                                                document.addEventListener('DOMContentLoaded', function() {
+                                                                    const starContainer = document.querySelector('.star-rating');
+                                                                    const stars = starContainer.querySelectorAll('i');
+                                                                    const ratingInput = document.getElementById('rating_value<?= $t['id_transaksi'] ?>');
+
+                                                                    // Set initial rating
+                                                                    setRating(5);
+
+                                                                    stars.forEach(star => {
+                                                                        star.addEventListener('click', (e) => {
+                                                                            const rating = e.target.getAttribute('data-rating');
+                                                                            setRating(rating);
+                                                                            ratingInput.value = rating;
+                                                                        });
+                                                                    });
+
+                                                                    function setRating(rating) {
+                                                                        stars.forEach(star => {
+                                                                            const starRating = star.getAttribute('data-rating');
+                                                                            if (starRating <= rating) {
+                                                                                star.classList.add('active');
+                                                                            } else {
+                                                                                star.classList.remove('active');
+                                                                            }
+                                                                        });
+                                                                    }
                                                                 });
-                                                              });
-                                                            });
                                                             </script>
-                                                        <?php else: ?>
-                                                            <span class="badge bg-success">Sudah direview</span>
-                                                        <?php endif; ?>
+                                                        </td>
+                                                    <?php else: ?>
+                                                            <span class="badge bg-success mt-1">Sudah Direview</span>
                                                     <?php endif; ?>
+                                                <?php endif; ?>
+                                                <td class="text-center">
+                                                    <a href="message.php?transaksi_id=<?= $t['id_transaksi'] ?>&produk_id=<?= $t['id_produk'] ?>" class="btn btn-link p-0" title="Tanya Admin">
+                                                        <i class="fas fa-comments fa-lg"></i>
+                                                    </a>
                                                 </td>
                                             </tr>
                                             <?php endwhile; ?>
@@ -642,15 +896,6 @@ for ($i = 5; $i >= 0; $i--) {
                                     </tbody>
                                 </table>
                             </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="tab-pane fade" id="payment-proofs" role="tabpanel">
-                    <div class="card shadow-sm mb-4">
-                        <div class="card-header bg-warning text-dark">Unggah Bukti Pembayaran</div>
-                        <div class="card-body">
-                            <p>Silakan gunakan halaman <a href="upload_payment_proof.php">Unggah Bukti Pembayaran</a> untuk mengunggah bukti pembayaran Anda.</p>
                         </div>
                     </div>
                 </div>
@@ -709,19 +954,19 @@ for ($i = 5; $i >= 0; $i--) {
                         </div>
                         <div class="mb-3">
                             <label for="username" class="form-label">Username</label>
-                            <input type="text" class="form-control" id="username" name="username" value="<?= htmlspecialchars($user_data['username']) ?>" required>
+                            <input type="text" class="form-control" id="username" name="username" value="<?= safe($user_data, 'username') ?>" required>
                         </div>
                         <div class="mb-3">
                             <label for="email" class="form-label">Email</label>
-                            <input type="email" class="form-control" id="email" name="email" value="<?= htmlspecialchars($user_data['email']) ?>" required>
+                            <input type="email" class="form-control" id="email" name="email" value="<?= safe($user_data, 'email') ?>" required>
                         </div>
                         <div class="mb-3">
                             <label for="no_telp" class="form-label">No. Telepon</label>
-                            <input type="text" class="form-control" id="no_telp" name="no_telp" value="<?= htmlspecialchars($user_data['no_hp']) ?>">
+                            <input type="text" class="form-control" id="no_telp" name="no_telp" value="<?= safe($user_data, 'no_hp') ?>">
                         </div>
                         <div class="mb-3">
                             <label for="alamat" class="form-label">Alamat</label>
-                            <textarea class="form-control" id="alamat" name="alamat" rows="3"><?= htmlspecialchars($user_data['alamat']) ?></textarea>
+                            <textarea class="form-control" id="alamat" name="alamat" rows="3"><?= safe($user_data, 'alamat') ?></textarea>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -798,59 +1043,6 @@ for ($i = 5; $i >= 0; $i--) {
 </script>
 
 <?php // The main and body/html tags are closed by includes/_header.php ?>
-
-<div class="card shadow-sm mb-4">
-    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-        <span>Saldo Anda</span>
-        <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#topupModal">Top Up Saldo</button>
-    </div>
-    <div class="card-body">
-        <h3 class="text-primary">Rp <?= number_format($user_data['saldo'] ?? 0, 0, ',', '.') ?></h3>
-        <?php
-        // Ringkasan saldo
-        $total_topup = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(nominal) AS total FROM riwayat_saldo WHERE user_id='$user_id' AND tipe='topup'"))['total'] ?? 0;
-        $total_pemakaian = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(nominal) AS total FROM riwayat_saldo WHERE user_id='$user_id' AND tipe IN ('sewa','denda')"))['total'] ?? 0;
-        ?>
-        <div class="mt-2">
-            <span class="badge bg-success">Total Top Up: Rp <?= number_format($total_topup,0,',','.') ?></span>
-            <span class="badge bg-danger">Total Pemakaian: Rp <?= number_format($total_pemakaian,0,',','.') ?></span>
-        </div>
-    </div>
-</div>
-
-<!-- Riwayat Saldo -->
-<div class="card shadow-sm mb-4">
-    <div class="card-header bg-secondary text-white">Riwayat Saldo</div>
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-striped table-hover">
-                <thead>
-                    <tr>
-                        <th>Tanggal</th>
-                        <th>Tipe</th>
-                        <th>Nominal</th>
-                        <th>Keterangan</th>
-                        <th>Saldo Setelah</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php
-                    $saldo_query = mysqli_query($conn, "SELECT * FROM riwayat_saldo WHERE user_id='$user_id' ORDER BY tanggal DESC");
-                    while($s = mysqli_fetch_assoc($saldo_query)):
-                    ?>
-                    <tr>
-                        <td><?= htmlspecialchars(date('d M Y H:i', strtotime($s['tanggal']))) ?></td>
-                        <td><span class="badge bg-<?= $s['tipe']=='topup'?'success':($s['tipe']=='sewa'?'primary':($s['tipe']=='denda'?'danger':'secondary')) ?>"><?= htmlspecialchars(ucfirst($s['tipe'])) ?></span></td>
-                        <td>Rp <?= number_format($s['nominal'],0,',','.') ?></td>
-                        <td><?= htmlspecialchars($s['keterangan']) ?></td>
-                        <td>Rp <?= number_format($s['saldo_setelah'],0,',','.') ?></td>
-                    </tr>
-                    <?php endwhile; ?>
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div> 
 
 <script>
 // Chart Saldo
@@ -935,8 +1127,8 @@ new Chart(pemasukanCtx, {
 </script> 
 
 <?php
-// Cek review produk oleh user
-function sudah_review($conn, $user_id, $product_id) {
-    $cek = mysqli_query($conn, "SELECT id FROM reviews WHERE user_id=$user_id AND product_id=$product_id");
+// Cek review produk oleh user per transaksi
+function sudah_review($conn, $user_id, $product_id, $transaksi_id) {
+    $cek = mysqli_query($conn, "SELECT id FROM reviews WHERE user_id=$user_id AND product_id=$product_id AND id_transaksi=$transaksi_id");
     return mysqli_num_rows($cek) > 0;
 } 

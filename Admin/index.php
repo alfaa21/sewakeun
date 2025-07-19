@@ -107,15 +107,15 @@ for ($i = 5; $i >= 0; $i--) {
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <style>
-    /* Sidebar Styling */
-    .sidebar {
+     /* Sidebar Styling */
+     .sidebar {
             width: 250px;
-            background-color: #2c3e50; /* Dark blue-gray */
+            background-color:rgb(229, 234, 240); /* Dark blue-gray */
             color: #ecf0f1; /* Light gray for text */
             padding: 20px;
             display: flex;
             flex-direction: column;
-            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            box-shadow: 2px 0 5px rgba(236, 221, 221, 0.66);
         }
 
         .sidebar-logo {
@@ -165,17 +165,18 @@ for ($i = 5; $i >= 0; $i--) {
             font-size: 1.1em;
         }
 
-        .sidebar-nav a:hover,
-        
+        .sidebar-nav a:hover{
+            background-color:rgba(232, 238, 243, 0.45); /* Slightly lighter dark blue-gray */
+        }
         .sidebar-nav a.active {
-            background-color:rgba(214, 224, 233, 0.45); /* Slightly lighter dark blue-gray */
+            background-color: #rgba(223, 230, 236, 0.45);; /* Slightly lighter dark blue-gray */
             color: #ffffff;
         }
 
         .sidebar-footer {
             margin-top: auto; /* Pushes the logout to the bottom */
             padding-top: 20px;
-            border-top: 1px solid rgba(255,255,255,0.1);
+            border-top: 1px solid rgba(248, 241, 241, 0.69);
         }
 
         .sidebar-footer a {
@@ -189,7 +190,7 @@ for ($i = 5; $i >= 0; $i--) {
         }
 
         .sidebar-footer a:hover {
-            background-color: #c0392b; /* Darker red */
+            background-color:rgb(239, 220, 218); /* Darker red */
             color: #ffffff;
         }
 
@@ -197,6 +198,7 @@ for ($i = 5; $i >= 0; $i--) {
             margin-right: 10px;
             font-size: 1.1em;
         }
+
 
 </style>
 <body>
@@ -212,8 +214,9 @@ for ($i = 5; $i >= 0; $i--) {
                     <li><a href="item.php"><i class="fas fa-boxes"></i> Barang</a></li>
                     <li><a href="pelanggan.php"><i class="fas fa-users"></i> Pelanggan</a></li>
                     <li><a href="pesanan.php"><i class="fas fa-receipt"></i> Pesanan</a></li>
-                    <li><a href="pembayaran.php"><i class="fas fa-dollar-sign"></i> Pembayaran</a></li>
+                    <li><a href="Transaksi.php"><i class="fas fa-dollar-sign"></i> Transaksi</a></li>
                     <li><a href="chat_admin.php"><i class="fas fa-comments"></i> Chat</a></li>
+                    <li><a href="promo.php"><i class="fas fa-tags"></i> Promo</a></li>
                     <li><a href="setting.php"><i class="fas fa-cog"></i> Pengaturan</a></li>
                 </ul>
             </nav>
@@ -284,59 +287,7 @@ for ($i = 5; $i >= 0; $i--) {
                 </div>
             </section>
             
-            <section class="recent-orders"> 
-                <h3>Pesanan Terbaru</h3> 
-                <table> 
-                    <thead> 
-                        <tr> 
-                            <th>ID Pesanan</th> 
-                            <th>Barang</th> 
-                            <th>Pelanggan</th> 
-                            <th>Tanggal Sewa</th> 
-                            <th>Status</th> 
-                        </tr> 
-                    </thead> 
-                    <tbody> 
-                        <tr> 
-                            <td>#P001</td> 
-                            <td>Kamera Sony A7III</td> 
-                            <td>Rina Susanti</td> 
-                            <td>22 Jun 2025</td> 
-                            <td><span class="status-badge pending">Menunggu</span></td> 
-                        </tr> 
-                        <tr> 
-                            <td>#P002</td> 
-                            <td>Drone DJI Mini 3</td> 
-                            <td>Budi Cahyono</td> 
-                            <td>21 Jun 2025</td> 
-                            <td><span class="status-badge active">Aktif</span></td> 
-                        </tr> 
-                        <tr> 
-                            <td>#P003</td> 
-                            <td>Proyektor Epson EB-X400</td> 
-                            <td>Citra Kirana</td> 
-                            <td>20 Jun 2025</td> 
-                            <td><span class="status-badge completed">Selesai</span></td> 
-                        </tr> 
-                        <tr> 
-                            <td>#P004</td> 
-                            <td>Speaker Portable JBL</td> 
-                            <td>Denny Firmansyah</td> 
-                            <td>19 Jun 2025</td> 
-                            <td><span class="status-badge active">Aktif</span></td> 
-                        </tr> 
-                        <tr> 
-                            <td>#P005</td> 
-                            <td>Lensa Canon EF 50mm</td> 
-                            <td>Eka Nurul</td> 
-                            <td>18 Jun 2025</td> 
-                            <td><span class="status-badge completed">Selesai</span></td> 
-                        </tr> 
-                    </tbody> 
-                </table> 
-            </section> 
-        </main> 
-    </div> 
+            
 
     <script>
         // Data for the charts (replace with dynamic data from your backend)

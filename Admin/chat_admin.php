@@ -42,6 +42,7 @@ if ($produk_id && $user_id) {
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
+        
         body { font-family: 'Poppins', Arial, sans-serif; background: #f4f6fa; }
         .dashboard-wrapper { display: flex; min-height: 100vh; }
         .main-content { flex: 1; background: #f4f6fa; }
@@ -49,17 +50,6 @@ if ($produk_id && $user_id) {
         .main-header h2 { font-size: 1.6rem; font-weight: 600; margin: 0; }
         .user-info { display: flex; align-items: center; gap: 12px; }
         .user-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid #eaeaea; }
-        /* Sidebar improvements */
-        .sidebar { width: 260px; background: #232b3e; color: #ecf0f1; display: flex; flex-direction: column; justify-content: space-between; min-height: 100vh; box-shadow: 2px 0 12px rgba(44,62,80,0.07); }
-        .sidebar-logo { display: flex; align-items: center; gap: 10px; padding: 24px 18px 12px 18px; font-size: 1.3rem; font-weight: 700; letter-spacing: 1px; border-bottom: 1px solid #2c3e50; }
-        .sidebar-logo i { font-size: 1.6rem; color: #a6ff00; }
-        .sidebar-nav ul { list-style: none; padding: 0; margin: 0; }
-        .sidebar-nav li { margin-bottom: 6px; }
-        .sidebar-nav a { display: flex; align-items: center; gap: 10px; color: #ecf0f1; text-decoration: none; padding: 10px 18px; border-radius: 8px; transition: background 0.18s, color 0.18s; font-size: 1.05rem; }
-        .sidebar-nav a.active, .sidebar-nav a:hover { background: #a6ff00; color: #232b3e; font-weight: 600; }
-        .sidebar-footer { padding: 18px; border-top: 1px solid #2c3e50; }
-        .sidebar-footer a { color: #ecf0f1; text-decoration: none; font-weight: 500; transition: color 0.18s; }
-        .sidebar-footer a:hover { color: #a6ff00; }
         /* Card Chat improvements */
         .card-chat { background: #f7fafd; border-radius: 16px; box-shadow: 0 4px 24px rgba(44,62,80,0.07); padding: 0; margin: 32px; min-height: 70vh; display: flex; }
         /* Chat List improvements */
@@ -134,21 +124,22 @@ if ($produk_id && $user_id) {
 </head>
 <body>
 <div class="dashboard-wrapper">
-    <aside class="sidebar" style="background:#2c3e50;color:#ecf0f1;">
+    <aside class="sidebar">
         <div class="sidebar-logo">
             <i class="fas fa-box-open"></i>
             <h3>Sewakeun Admin</h3>
         </div>
         <nav class="sidebar-nav">
-            <ul>
-                <li><a href="index.php"><i class="fas fa-home"></i> Dashboard</a></li>
-                <li><a href="item.php"><i class="fas fa-boxes"></i> Barang</a></li>
-                <li><a href="pelanggan.php"><i class="fas fa-users"></i> Pelanggan</a></li>
-                <li><a href="pesanan.php"><i class="fas fa-receipt"></i> Pesanan</a></li>
-                <li><a href="pembayaran.php"><i class="fas fa-dollar-sign"></i> Pembayaran</a></li>
-                <li><a href="chat_admin.php" class="active"><i class="fas fa-comments"></i> Chat</a></li>
-                <li><a href="setting.php"><i class="fas fa-cog"></i> Pengaturan</a></li>
-            </ul>
+        <ul>
+                    <li><a href="index.php" class="active"><i class="fas fa-home"></i> Dashboard</a></li>
+                    <li><a href="item.php"><i class="fas fa-boxes"></i> Barang</a></li>
+                    <li><a href="pelanggan.php"><i class="fas fa-users"></i> Pelanggan</a></li>
+                    <li><a href="pesanan.php"><i class="fas fa-receipt"></i> Pesanan</a></li>
+                    <li><a href="Transaksi.php"><i class="fas fa-dollar-sign"></i> Transaksi</a></li>
+                    <li><a href="chat_admin.php"><i class="fas fa-comments"></i> Chat</a></li>
+                    <li><a href="promo.php"><i class="fas fa-tags"></i> Promo</a></li>
+                    <li><a href="setting.php"><i class="fas fa-cog"></i> Pengaturan</a></li>
+                </ul>
         </nav>
         <div class="sidebar-footer">
             <a href="../logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a>

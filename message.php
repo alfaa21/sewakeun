@@ -4,13 +4,24 @@ session_start();
 // Ambil user id dari session
 $user_id = $_SESSION['user_id'] ?? 0;
 
+// Ambil transaksi_id dari query string jika ada
+$transaksi_id = isset($_GET['transaksi_id']) ? intval($_GET['transaksi_id']) : 0;
+
+// Ambil detail transaksi jika ada transaksi_id
+$transaksi = null;
+if ($transaksi_id) {
+    $transaksi_q = mysqli_query($conn, "SELECT t.*, p.nama AS nama_produk, p.gambar FROM transaksi t JOIN produk p ON t.id_produk=p.id WHERE t.id_transaksi=$transaksi_id");
+    $transaksi = mysqli_fetch_assoc($transaksi_q);
+}
+
 // Proses kirim pesan user
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['message'])) {
     $produk_id = isset($_GET['produk_id']) ? intval($_GET['produk_id']) : 0;
+    $transaksi_id = isset($_GET['transaksi_id']) ? intval($_GET['transaksi_id']) : 0;
     if ($produk_id && $user_id) {
         $msg = mysqli_real_escape_string($conn, $_POST['message']);
-        mysqli_query($conn, "INSERT INTO chat_messages (produk_id, user_id, sender, message) VALUES ($produk_id, $user_id, 'user', '$msg')");
-        header("Location: message.php?produk_id=$produk_id");
+        mysqli_query($conn, "INSERT INTO chat_messages (produk_id, user_id, sender, message, id_transaksi) VALUES ($produk_id, $user_id, 'user', '$msg', " . ($transaksi_id ?: 'NULL') . ")");
+        header("Location: message.php?produk_id=$produk_id" . ($transaksi_id ? "&transaksi_id=$transaksi_id" : ""));
         exit;
     }
 }
@@ -56,7 +67,7 @@ if ($produk_id) {
 // Ambil riwayat chat
 $chat_detail = [];
 if ($produk_id && $user_id) {
-    $q = mysqli_query($conn, "SELECT * FROM chat_messages WHERE produk_id=$produk_id AND user_id=$user_id ORDER BY created_at ASC");
+    $q = mysqli_query($conn, "SELECT * FROM chat_messages WHERE produk_id=$produk_id AND user_id=$user_id" . ($transaksi_id ? " AND id_transaksi=$transaksi_id" : "") . " ORDER BY created_at ASC");
     while ($row = mysqli_fetch_assoc($q)) $chat_detail[] = $row;
 }
 
@@ -194,6 +205,12 @@ include 'includes/_header.php';
                 <div class="header-title">Chat Produk</div>
             <?php endif; ?>
         </div>
+        <?php if ($transaksi): ?>
+        <div class="alert alert-info mb-3">
+            <strong>Transaksi #<?= htmlspecialchars($transaksi['id_transaksi']) ?>:</strong> <?= htmlspecialchars($transaksi['nama_produk']) ?> (<?= htmlspecialchars(date('d M Y', strtotime($transaksi['tanggal_mulai']))) ?>, <?= htmlspecialchars($transaksi['lama_sewa']) ?> hari)<br>
+            Status: <span class="badge bg-primary"><?= htmlspecialchars($transaksi['status_transaksi']) ?></span>
+        </div>
+        <?php endif; ?>
         <div class="chat-messages">
             <?php if (empty($chat_detail)): ?>
                 <div class="text-center text-muted mt-5">Belum ada pesan</div>

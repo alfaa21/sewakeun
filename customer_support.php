@@ -13,8 +13,8 @@ include 'includes/_header.php';
         <p class="fs-5 text-muted col-md-8 mx-auto">Ada pertanyaan? Cari jawaban di sini atau telusuri topik di bawah.</p>
         <div class="col-lg-6 mx-auto mt-4">
             <div class="input-group input-group-lg">
-                <span class="input-group-text"><i class="fas fa-search"></i></span>
-                <input type="text" class="form-control" placeholder="Contoh: Bagaimana cara membatalkan sewa?">
+
+                
             </div>
         </div>
     </section>
@@ -50,6 +50,13 @@ include 'includes/_header.php';
             <div class="accordion-item"><h2 class="accordion-header"><button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">Bagaimana cara menyewa barang?</button></h2><div id="collapseOne" class="accordion-collapse collapse show" data-bs-parent="#faqAccordion"><div class="accordion-body">Pilih barang yang Anda inginkan, tentukan tanggal sewa pada kalender yang tersedia, lalu klik tombol "Sewa Sekarang". Anda akan diarahkan ke halaman pembayaran untuk menyelesaikan transaksi.</div></div></div>
             <div class="accordion-item"><h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo">Apakah saya bisa membatalkan pesanan sewa?</button></h2><div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#faqAccordion"><div class="accordion-body">Ya, Anda bisa membatalkan pesanan hingga 24 jam sebelum waktu sewa dimulai untuk mendapatkan pengembalian dana penuh. Pembatalan setelah itu mungkin akan dikenakan biaya sesuai kebijakan yang berlaku.</div></div></div>
             <div class="accordion-item"><h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree">Apa yang harus saya lakukan jika barang yang disewa rusak?</button></h2><div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#faqAccordion"><div class="accordion-body">Harap segera hubungi penyewa melalui fitur chat di halaman pesanan Anda dan laporkan kerusakan tersebut. Jika perlu, tim dukungan pelanggan kami juga siap membantu Anda untuk mediasi.</div></div></div>
+            <!-- FAQ tambahan -->
+            <div class="accordion-item"><h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour">Bagaimana cara mengisi saldo?</button></h2><div id="collapseFour" class="accordion-collapse collapse" data-bs-parent="#faqAccordion"><div class="accordion-body">Anda dapat mengisi saldo melalui menu Top Up di dashboard dengan berbagai metode pembayaran yang tersedia.</div></div></div>
+            
+            <div class="accordion-item"><h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSix">Apa yang terjadi jika saya telat mengembalikan barang?</button></h2><div id="collapseSix" class="accordion-collapse collapse" data-bs-parent="#faqAccordion"><div class="accordion-body">Jika Anda telat mengembalikan barang, akan dikenakan denda sebesar 30% dari harga sewa per hari keterlambatan.</div></div></div>
+            <div class="accordion-item"><h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSeven">Bagaimana cara memberikan review produk?</button></h2><div id="collapseSeven" class="accordion-collapse collapse" data-bs-parent="#faqAccordion"><div class="accordion-body">Setelah masa sewa selesai, Anda dapat memberikan review pada produk melalui dashboard di menu transaksi.</div></div></div>
+            <div class="accordion-item"><h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEight">Apa saja kurir yang tersedia untuk pengiriman?</button></h2><div id="collapseEight" class="accordion-collapse collapse" data-bs-parent="#faqAccordion"><div class="accordion-body">Kurir yang tersedia antara lain JNE, J&T, Gojek, Grab, dan kurir internal Sewaken.</div></div></div>
+            <div class="accordion-item"><h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseNine">Bagaimana cara mengubah data profil saya?</button></h2><div id="collapseNine" class="accordion-collapse collapse" data-bs-parent="#faqAccordion"><div class="accordion-body">Anda dapat mengubah data profil, password, dan foto profil melalui menu Edit Profil di dashboard.</div></div></div>
         </div>
     </section>
     <section class="text-center border-top my-5 py-5">
@@ -58,6 +65,17 @@ include 'includes/_header.php';
         <div class="d-grid gap-2 d-sm-flex justify-content-sm-center mt-4">
             <a href="chat.php" class="btn btn-primary btn-lg px-4 gap-3"><i class="fas fa-comments me-2"></i>Chat Langsung</a>
             <a href="mailto:support@sewaken.com" class="btn btn-outline-secondary btn-lg px-4"><i class="fas fa-envelope me-2"></i>Kirim Email</a>
+        </div>
+    </section>
+    <section class="py-5">
+        <div class="container" style="max-width:900px; margin:0 auto;">
+            
+            <h4 class="mt-4">Komitmen Kami</h4>
+            <p>Di <b>[SEWAKEN]</b>, kami berkomitmen untuk memberikan layanan pelanggan yang responsif, solutif, dan ramah. Jangan ragu untuk menghubungi kami kapan pun Anda membutuhkan bantuan. Terima kasih telah menjadi bagian dari komunitas kami!</p>
+            <div style="font-size:0.97em;color:#888;margin-top:2em;">
+                <b>Tips:</b> Gunakan ikon untuk setiap metode kontak, selalu cantumkan jam operasional dan estimasi waktu respons (SLA) agar ekspektasi pelanggan terkelola dengan baik.<br>
+                <b>Catatan:</b> Ganti [SEWAKEN] dan detail kontak dengan informasi bisnis Anda yang sebenarnya.
+            </div>
         </div>
     </section>
 </main>

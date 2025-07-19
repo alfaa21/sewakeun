@@ -17,10 +17,8 @@ if (isset($_POST['update_status'])) {
     exit();
 }
 
-// Ambil data pesanan dengan informasi pelanggan
-$query = "SELECT o.*, u.username AS customer_username, u.email AS customer_email, u.phone_number AS customer_phone ";
-$query .= "FROM orders o JOIN users u ON o.user_id = u.id ORDER BY o.order_date DESC";
-$orders = mysqli_query($conn, $query);
+// Query data pesanan
+$query = mysqli_query($conn, "SELECT t.id_transaksi, u.username AS nama_user, p.nama AS nama_produk, t.tanggal_mulai, t.tanggal_selesai, t.alamat_pengiriman, t.status_transaksi FROM transaksi t JOIN users u ON t.id_user = u.id JOIN produk p ON t.id_produk = p.id ORDER BY t.id_transaksi DESC");
 
 // Ambil data admin untuk foto profil
 $admin_data = null;
@@ -242,14 +240,29 @@ if (isset($_SESSION['user_id'])) {
         }
 
         .status-badge {
-            padding: 5px 10px;
-            border-radius: 15px;
-            font-size: 0.85em;
-            font-weight: 600;
-            color: #fff;
-            text-align: center;
             display: inline-block;
+            min-width: 110px;
+            height: 32px;
+            line-height: 32px;
+            padding: 0 16px;
+            border-radius: 16px;
+            font-weight: 600;
+            font-size: 1rem;
+            color: #fff;
+            background: #888;
+            text-align: center;
+            vertical-align: middle;
+            box-sizing: border-box;
+            white-space: nowrap;
         }
+        .status-selesai { background: #2ecc71; color: #fff; }
+        .status-dibatalkan { background: #e74c3c; color: #fff; }
+        .status-masa-sewa { background: #f1c40f; color: #222; }
+        .status-dikirim { background: #3498db; color: #fff; }
+        .status-menunggu-verifikasi-admin { background: #00bcd4; color: #fff; }
+        .status-pending-pembayaran { background: #ff9800; color: #fff; }
+        .status-telat-pengembalian { background: #e67e22; color: #fff; }
+        .status-dikirim-kembali { background: #9b59b6; color: #fff; }
 
         /* Status colors from previous examples */
         .status-badge.pending { background-color: #f39c12; } /* Orange */
@@ -457,12 +470,14 @@ if (isset($_SESSION['user_id'])) {
                 <h3>Sewakeun Admin</h3>
             </div>
             <nav class="sidebar-nav">
-                <ul>
-                    <li><a href="index.php"><i class="fas fa-home"></i> Dashboard</a></li>
+            <ul>
+                    <li><a href="index.php" class="active"><i class="fas fa-home"></i> Dashboard</a></li>
                     <li><a href="item.php"><i class="fas fa-boxes"></i> Barang</a></li>
                     <li><a href="pelanggan.php"><i class="fas fa-users"></i> Pelanggan</a></li>
-                    <li><a href="pesanan.php" class="active"><i class="fas fa-receipt"></i> Pesanan</a></li>
-                    <li><a href="pembayaran.php"><i class="fas fa-dollar-sign"></i> Pembayaran</a></li>
+                    <li><a href="pesanan.php"><i class="fas fa-receipt"></i> Pesanan</a></li>
+                    <li><a href="Transaksi.php"><i class="fas fa-dollar-sign"></i> Transaksi</a></li>
+                    <li><a href="chat_admin.php"><i class="fas fa-comments"></i> Chat</a></li>
+                    <li><a href="promo.php"><i class="fas fa-tags"></i> Promo</a></li>
                     <li><a href="setting.php"><i class="fas fa-cog"></i> Pengaturan</a></li>
                 </ul>
             </nav>
@@ -473,7 +488,7 @@ if (isset($_SESSION['user_id'])) {
 
         <main class="main-content">
             <header class="main-header">
-                <h2>Kelola Pesanan</h2>
+                <h2>Pesanan Masuk</h2>
                 <div class="user-info">
                     <span>Halo, <?php echo htmlspecialchars($_SESSION['username'] ?? 'Admin'); ?></span>
                     <img src="../<?= htmlspecialchars($admin_data['foto_profil'] ?? 'assets/images/account-avatar-profile-user-6-svgrepo-com.svg') ?>" alt="User Avatar" class="user-avatar">
@@ -490,10 +505,13 @@ if (isset($_SESSION['user_id'])) {
                     <div class="filter-dropdown">
                         <select aria-label="Filter Status Pesanan">
                             <option value="">Semua Status</option>
-                            <option value="pending">Menunggu</option>
-                            <option value="active">Aktif</option>
-                            <option value="completed">Selesai</option>
-                            <option value="cancelled">Dibatalkan</option>
+                            <option value="pending_pembayaran">Pending Pembayaran</option>
+                            <option value="menunggu_verifikasi_admin">Menunggu Verifikasi Admin</option>
+                            <option value="masa_sewa">Masa Sewa</option>
+                            <option value="telat_pengembalian">Telat Pengembalian</option>
+                            <option value="dikirim_kembali">Dikirim Kembali</option>
+                            <option value="selesai">Selesai</option>
+                            <option value="dibatalkan">Dibatalkan</option>
                         </select>
                     </div>
                     <!-- Removed "Tambah Pesanan Baru" as it's not in scope yet -->
@@ -502,65 +520,37 @@ if (isset($_SESSION['user_id'])) {
                 <table>
                     <thead>
                         <tr>
-                            <th>ID Pesanan</th>
-                            <th>Pelanggan</th>
-                            <th>Tanggal Pesanan</th>
-                            <th>Mulai Sewa</th>
-                            <th>Selesai Sewa</th>
-                            <th>Total Harga</th>
+                            <th>ID Transaksi</th>
+                            <th>Nama User</th>
+                            <th>Nama Produk</th>
+                            <th>Tanggal Mulai</th>
+                            <th>Tanggal Selesai</th>
+                            <th>Alamat</th>
                             <th>Status</th>
-                            <th>Bukti Bayar</th>
-                            <th>Aksi</th>
+                            <th>Pesan</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php if (mysqli_num_rows($orders) > 0): ?>
-                            <?php while($order = mysqli_fetch_assoc($orders)): ?>
+                        <?php if (mysqli_num_rows($query) > 0): ?>
+                            <?php while($row = mysqli_fetch_assoc($query)): ?>
                             <tr>
-                                <td>#<?= htmlspecialchars($order['id']) ?></td>
-                                <td><?= htmlspecialchars($order['customer_username']) ?></td>
-                                <td><?= htmlspecialchars(date('d M Y', strtotime($order['order_date']))) ?></td>
-                                <td><?= htmlspecialchars(date('d M Y', strtotime($order['rental_start_date']))) ?></td>
-                                <td><?= htmlspecialchars(date('d M Y', strtotime($order['rental_end_date']))) ?></td>
-                                <td>Rp <?= number_format($order['total_amount'], 0, ',', '.') ?></td>
-                                <td><span class="status-badge <?= htmlspecialchars($order['status']) ?>"><?= htmlspecialchars(ucfirst($order['status'])) ?></span></td>
+                                <td><?= htmlspecialchars($row['id_transaksi']) ?></td>
+                                <td><?= htmlspecialchars($row['nama_user']) ?></td>
+                                <td><?= htmlspecialchars($row['nama_produk']) ?></td>
+                                <td><?= htmlspecialchars(date('d M Y', strtotime($row['tanggal_mulai']))) ?></td>
+                                <td><?= htmlspecialchars(date('d M Y', strtotime($row['tanggal_selesai']))) ?></td>
+                                <td><?= htmlspecialchars($row['alamat_pengiriman']) ?></td>
+                                <td><span class="status-badge status-<?= str_replace('_', '-', strtolower($row['status_transaksi'])) ?>"><?= htmlspecialchars(ucwords(str_replace('_', ' ', $row['status_transaksi']))) ?></span></td>
                                 <td>
-                                    <?php if ($order['proof_of_payment']): ?>
-                                        <a href="../<?= htmlspecialchars($order['proof_of_payment']) ?>" target="_blank" class="btn btn-info" style="padding: 5px 8px; font-size: 0.75em;">Lihat</a>
-                                    <?php else: ?>
-                                        Belum Ada
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <div class="action-buttons">
-                                        <button class="btn btn-info" onclick="openAdminOrderDetailModal(<?= $order['id'] ?>)"><i class="fas fa-eye"></i> Detail</button>
-                                        <?php if ($order['status'] === 'processed'): ?>
-                                            <form method="POST" style="display:inline;">
-                                                <input type="hidden" name="order_id" value="<?= $order['id'] ?>">
-                                                <input type="hidden" name="new_status" value="shipped">
-                                                <button type="submit" name="update_status" class="btn btn-success"><i class="fas fa-truck"></i> Proses Kirim</button>
-                                            </form>
-                                        <?php elseif ($order['status'] === 'shipped'): ?>
-                                            <form method="POST" style="display:inline;">
-                                                <input type="hidden" name="order_id" value="<?= $order['id'] ?>">
-                                                <input type="hidden" name="new_status" value="completed">
-                                                <button type="submit" name="update_status" class="btn btn-success"><i class="fas fa-check"></i> Selesai</button>
-                                            </form>
-                                        <?php endif; ?>
-                                        <?php if ($order['status'] !== 'completed' && $order['status'] !== 'cancelled'): ?>
-                                            <form method="POST" style="display:inline;">
-                                                <input type="hidden" name="order_id" value="<?= $order['id'] ?>">
-                                                <input type="hidden" name="new_status" value="cancelled">
-                                                <button type="submit" name="update_status" class="btn btn-danger" onclick="return confirm('Batalkan pesanan ini?')"><i class="fas fa-times"></i> Batalkan</button>
-                                            </form>
-                                        <?php endif; ?>
-                                    </div>
+                                  <a href="chat_admin.php" title="Pesan ke User" class="text-primary">
+                                    <i class="fas fa-comments fa-lg"></i>
+                                  </a>
                                 </td>
                             </tr>
                             <?php endwhile; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="9">Belum ada pesanan.</td>
+                                <td colspan="6">Belum ada pesanan.</td>
                             </tr>
                         <?php endif; ?>
                     </tbody>

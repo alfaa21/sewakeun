@@ -59,14 +59,14 @@ $message_type = $_SESSION['message_type'] ?? '';
 unset($_SESSION['message']);
 unset($_SESSION['message_type']);
 
-// Ambil kategori dari database
+
 $kategori_query = mysqli_query($conn, "SELECT * FROM kategori");
 $kategori_list = [];
 while($k = mysqli_fetch_assoc($kategori_query)) {
     $kategori_list[] = $k;
 }
 
-// Mapping kategori ke icon Font Awesome dan warna
+
 $kategori_icons = [
     'Elektronik' => ['icon' => 'fa-solid fa-plug', 'color' => '#1976d2'],
     'Kamera' => ['icon' => 'fa-solid fa-camera', 'color' => '#8e24aa'],
@@ -411,6 +411,11 @@ $kategori_icons = [
     width: 100%;
 }
 .kategori-card {
+    cursor: pointer;
+    transition: box-shadow 0.18s, border 0.18s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     background: #fff;
     border: 1.5px solid #e0e0e0;
     border-radius: 16px;
@@ -419,17 +424,15 @@ $kategori_icons = [
     min-width: 120px;
     max-width: 140px;
     width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    transition: box-shadow 0.18s, border 0.18s;
-    cursor: pointer;
     margin-left: auto;
     margin-right: auto;
+    text-decoration: none;
+    color: inherit;
 }
 .kategori-card:hover {
     box-shadow: 0 6px 24px rgba(0,0,0,0.13);
     border: 1.5px solid #007bff;
+    color: #007bff;
 }
 .kategori-card .kategori-icon {
     font-size: 2.5rem;
@@ -683,21 +686,13 @@ $kategori_icons = [
     <div class="trusted-item"><i class="fas fa-check text-success"></i> DIPERCAYA BANYAK PERUSAHAAN LOKAL SAMPAI INTERNASIONAL</div>
 </div>
 
-<?php
-// Ambil promo dari database
-require_once 'models/PromoModel.php';
-$promoModel = new PromoModel($conn);
-$active_promos = $promoModel->getActivePromos();
-?>
-
 <div class="promo-cards">
-    <!-- Kartu promo dummy (selalu tampil) -->
     <div class="promo-card-modern" style="background:#00cfff;">
         <img src="assets/images/DSLR-LEICA-260x200.jpg" class="promo-img" alt="Promo Diskon Akhir Tahun">
         <div class="promo-content">
-            <div class="promo-title">Diskon Akhir Tahun!</div>
+            <div class="promo-title" >Diskon Akhir Tahun!</div>
             <div class="promo-desc">Dapatkan diskon hingga 30% untuk semua kategori.</div>
-            <a class="promo-btn" href="promo.php">Lihat Promo</a>
+            <button class="promo-btn" onclick="window.location.href='promo.php'">Lihat Promo</button>
             <span class="promo-badge">30% OFF</span>
         </div>
     </div>
@@ -706,7 +701,7 @@ $active_promos = $promoModel->getActivePromos();
         <div class="promo-content">
             <div class="promo-title">Sewa Lebih Lama, Hemat Lebih Banyak</div>
             <div class="promo-desc">Diskon khusus untuk penyewaan di atas 7 hari.</div>
-            <button class="promo-btn">Pelajari Lebih Lanjut</button>
+            <button class="promo-btn" onclick="window.location.href='promo.php'">Pelajari Lebih Lanjut</button>
             <span class="promo-badge">Hemat!</span>
         </div>
     </div>
@@ -715,7 +710,7 @@ $active_promos = $promoModel->getActivePromos();
         <div class="promo-content">
             <div class="promo-title">Promo Kamera & Elektronik</div>
             <div class="promo-desc">Sewa kamera, proyektor, dan alat elektronik lain dengan harga spesial minggu ini!</div>
-            <button class="promo-btn">Lihat Detail</button>
+            <button class="promo-btn" onclick="window.location.href='promo.php'">Lihat Detail</button>
             <span class="promo-badge" style="background:#ff9800;">Hot!</span>
         </div>
     </div>
@@ -730,14 +725,14 @@ $active_promos = $promoModel->getActivePromos();
                 $icon = $kategori_icons[$k['nama']]['icon'] ?? 'fa-solid fa-box';
                 $color = $kategori_icons[$k['nama']]['color'] ?? '#1976d2';
             ?>
-            <div class="kategori-card">
+            <a href="kategori.php?cat=<?= $k['id'] ?>" class="kategori-card" style="text-decoration:none;">
                 <span class="kategori-icon" style="color:<?= $color ?>;background:#f6f8fa;width:60px;height:60px;display:flex;align-items:center;justify-content:center;font-size:2.5rem;">
                     <i class="<?= $icon ?>" style="color:<?= $color ?>;font-size:2.5rem;"></i>
                 </span>
                 <div class="kategori-nama" style="font-size:1.08rem;font-weight:600;text-align:center;margin-bottom:0.1rem;color:#222;word-break:break-word;line-height:1.2;">
                     <?= htmlspecialchars($k['nama']) ?>
                 </div>
-            </div>
+            </a>
         <?php endforeach; ?>
     </div>
 </section>

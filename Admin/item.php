@@ -29,6 +29,7 @@ if (isset($_POST['tambah_produk'])) {
     header('Location: item.php');
     exit();
 }
+
 // Handle hapus produk
 if (isset($_GET['hapus'])) {
     $id = intval($_GET['hapus']);
@@ -36,6 +37,7 @@ if (isset($_GET['hapus'])) {
     header('Location: item.php');
     exit();
 }
+
 // Handle tambah lokasi
 if (isset($_POST['tambah_lokasi'])) {
     $nama_lokasi = mysqli_real_escape_string($conn, $_POST['nama_lokasi']);
@@ -45,6 +47,7 @@ if (isset($_POST['tambah_lokasi'])) {
     header('Location: item.php');
     exit();
 }
+
 // Handle tambah kategori
 if (isset($_POST['tambah_kategori'])) {
     $nama_kategori = mysqli_real_escape_string($conn, $_POST['nama_kategori']);
@@ -54,6 +57,7 @@ if (isset($_POST['tambah_kategori'])) {
     header('Location: item.php');
     exit();
 }
+
 // Handle tambah kurir
 if (isset($_POST['tambah_kurir'])) {
     $nama_kurir = mysqli_real_escape_string($conn, $_POST['nama_kurir']);
@@ -64,8 +68,27 @@ if (isset($_POST['tambah_kurir'])) {
     header('Location: item.php');
     exit();
 }
-// Ambil data produk, kategori, dan lokasi
-$produk = mysqli_query($conn, "SELECT produk.*, kategori.nama AS kategori, lokasi.nama AS lokasi FROM produk JOIN kategori ON produk.kategori_id = kategori.id JOIN lokasi ON produk.lokasi_id = lokasi.id ORDER BY produk.id DESC");
+
+// Ambil parameter search
+$search = isset($_GET['search']) ? mysqli_real_escape_string($conn, $_GET['search']) : '';
+
+// Query produk dengan search
+$query = "SELECT produk.*, kategori.nama AS kategori, lokasi.nama AS lokasi 
+          FROM produk 
+          JOIN kategori ON produk.kategori_id = kategori.id 
+          JOIN lokasi ON produk.lokasi_id = lokasi.id";
+
+if (!empty($search)) {
+    $query .= " WHERE produk.nama LIKE '%$search%' 
+                OR produk.deskripsi LIKE '%$search%' 
+                OR kategori.nama LIKE '%$search%' 
+                OR lokasi.nama LIKE '%$search%'";
+}
+
+$query .= " ORDER BY produk.id DESC";
+$produk = mysqli_query($conn, $query);
+
+// Ambil data kategori dan lokasi untuk form
 $kategori = mysqli_query($conn, "SELECT * FROM kategori");
 $lokasi = mysqli_query($conn, "SELECT * FROM lokasi");
 
@@ -88,442 +111,210 @@ if (isset($_SESSION['user_id'])) {
     <link rel="stylesheet" href="style_admin.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-</head>
-<style>
-    body {
-            font-family: 'Poppins', sans-serif;
-            margin: 0;
-            background-color: #f4f7f6;
-            color: #333;
-        }
+    <style>
+        /* Existing styles... */
 
-        .dashboard-wrapper {
-            display: flex;
-            min-height: 100vh;
+        /* Search Form Styling */
+        .search-container {
+            background: #fff;
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            border: 1px solid #e0e0e0;
+            margin: 2rem 0;
         }
-
-        /* Sidebar Styling */
-        .sidebar {
-            width: 250px;
-            background-color: #2c3e50; /* Dark blue-gray */
-            color: #ecf0f1; /* Light gray for text */
-            padding: 20px;
+        
+        .search-form {
             display: flex;
-            flex-direction: column;
-            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
-        }
-
-        .sidebar-logo {
-            text-align: center;
-            margin-bottom: 30px;
-            display: flex;
+            gap: 12px;
             align-items: center;
-            justify-content: center;
-            gap: 10px;
+            max-width: 1000px;
+            margin: 0 auto;
         }
-
-        .sidebar-logo i {
-            font-size: 2.5em;
-            color: #3498db; /* Blue for icon */
+        
+        .search-input {
+            flex: 1;
+            padding: 12px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+            background: #f8f9fa;
         }
-
-        .sidebar-logo h3 {
-            margin: 0;
-            font-size: 1.4em;
-            font-weight: 600;
-            color: #ecf0f1;
+        
+        .search-input:focus {
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52,152,219,0.1);
+            outline: none;
+            background: #fff;
         }
-
-        .sidebar-nav ul {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            flex-grow: 1; /* Allows nav to take available space */
-        }
-
-        .sidebar-nav li {
-            margin-bottom: 10px;
-        }
-
-        .sidebar-nav a {
-            color: #ecf0f1;
-            text-decoration: none;
-            padding: 12px 15px;
-            display: flex;
-            align-items: center;
-            border-radius: 5px;
-            transition: background-color 0.3s ease, color 0.3s ease;
-        }
-
-        .sidebar-nav a i {
-            margin-right: 10px;
-            font-size: 1.1em;
-        }
-
-        .sidebar-nav a:hover,
-        .sidebar-nav a.active {
-            background-color: #34495e; /* Slightly lighter dark blue-gray */
-            color: #ffffff;
-        }
-
-        .sidebar-footer {
-            margin-top: auto; /* Pushes the logout to the bottom */
-            padding-top: 20px;
-            border-top: 1px solid rgba(255,255,255,0.1);
-        }
-
-        .sidebar-footer a {
-            color: #e74c3c; /* Red for logout */
-            text-decoration: none;
-            padding: 12px 15px;
-            display: flex;
-            align-items: center;
-            border-radius: 5px;
-            transition: background-color 0.3s ease, color 0.3s ease;
-        }
-
-        .sidebar-footer a:hover {
-            background-color: #c0392b; /* Darker red */
-            color: #ffffff;
-        }
-
-        .sidebar-footer i {
-            margin-right: 10px;
-            font-size: 1.1em;
-        }
-
-        /* Main Content Styling */
-        .main-content {
-            flex-grow: 1;
-            padding: 30px;
-            background-color: #f4f7f6;
-        }
-
-        .main-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-            background-color: #ffffff;
-            padding: 20px 30px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-
-        .main-header h2 {
-            margin: 0;
-            color: #2c3e50;
-            font-size: 1.8em;
-            font-weight: 600;
-        }
-
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .user-info span {
-            font-weight: 500;
-            color: #555;
-        }
-
-        .user-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid #3498db;
-        }
-
-        /* Section Styling */
-        section {
-            background-color: #ffffff;
-            padding: 25px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            margin-bottom: 25px;
-        }
-
-        section h3 {
-            margin-top: 0;
-            margin-bottom: 20px;
-            color: #2c3e50;
-            font-size: 1.5em;
-            font-weight: 600;
-            border-bottom: 2px solid #eee;
-            padding-bottom: 10px;
-        }
-
-        /* Table Styling */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-            font-size: 0.95em;
-        }
-
-        table thead th {
-            background-color: #f8f8f8;
-            color: #555;
-            text-align: left;
-            padding: 12px 15px;
-            border-bottom: 2px solid #ddd;
-        }
-
-        table tbody td {
-            padding: 12px 15px;
-            border-bottom: 1px solid #eee;
-            color: #444;
-        }
-
-        table tbody tr:nth-child(even) {
-            background-color: #fcfcfc;
-        }
-
-        table tbody tr:hover {
-            background-color: #f0f0f0;
-        }
-
-        .status-badge {
-            padding: 5px 10px;
-            border-radius: 15px;
-            font-size: 0.85em;
-            font-weight: 600;
+        
+        .search-btn {
+            padding: 12px 24px;
+            background: #3498db;
             color: #fff;
-            text-align: center;
-            display: inline-block;
-        }
-
-        /* Status colors from previous examples */
-        .status-badge.pending { background-color: #f39c12; } /* Orange */
-        .status-badge.processed { background-color: #3498db; } /* Blue, for processed */
-        .status-badge.shipped { background-color: #17a2b8; } /* Cyan, for shipped */
-        .status-badge.completed { background-color: #2ecc71; } /* Green */
-        .status-badge.cancelled { background-color: #e74c3c; } /* Red */
-
-        /* Button Styling */
-        .btn {
-            padding: 10px 15px;
-            border-radius: 5px;
-            text-decoration: none;
-            color: #fff;
-            font-weight: 500;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            transition: background-color 0.3s ease;
             border: none;
+            border-radius: 10px;
             cursor: pointer;
-        }
-
-        .btn-primary {
-            background-color: #3498db; /* Blue */
-        }
-
-        .btn-primary:hover {
-            background-color: #2980b9; /* Darker blue */
-        }
-
-        .btn-info {
-            background-color: #17a2b8; /* Cyan for View Details */
-        }
-
-        .btn-info:hover {
-            background-color: #138496;
-        }
-
-        .btn-success {
-            background-color: #2ecc71; /* Green */
-        }
-
-        .btn-success:hover {
-            background-color: #27ae60; /* Darker green */
-        }
-
-        .btn-danger {
-            background-color: #e74c3c; /* Red */
-        }
-
-        .btn-danger:hover {
-            background-color: #c0392b; /* Darker red */
-        }
-
-        .action-buttons {
+            transition: all 0.2s;
+            font-weight: 500;
             display: flex;
+            align-items: center;
             gap: 8px;
         }
-
-        .action-buttons .btn {
-            padding: 8px 12px;
-            font-size: 0.85em;
+        
+        .search-btn:hover {
+            background: #2980b9;
+            transform: translateY(-1px);
         }
-
-        /* Search Bar Specific Styles */
-        .orders-management .filter-section {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            gap: 15px;
-            flex-wrap: wrap; /* Allows wrapping on smaller screens */
+        
+        .search-btn i {
+            font-size: 0.9em;
         }
-
-        .orders-management .search-bar {
-            flex-grow: 1; /* Allows search bar to take available space */
-            max-width: 300px; /* Limit search bar width */
-            position: relative;
-        }
-
-        .orders-management .search-bar input {
-            width: 100%;
-            padding: 10px 15px;
-            padding-right: 40px; /* Space for icon */
+        
+        .reset-btn {
+            padding: 12px 24px;
+            background: #f8f9fa;
+            color: #666;
             border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 1em;
-        }
-
-        .orders-management .search-bar i {
-            position: absolute;
-            right: 15px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #999;
-        }
-
-        .orders-management .filter-dropdown select {
-            padding: 10px 15px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 1em;
-            background-color: #fff;
-            cursor: pointer;
-        }
-
-        /* Modal Styling */
-        .modal-bg {
-            display: none; /* Hidden by default */
-            position: fixed; /* Stay in place */
-            z-index: 1; /* Sit on top */
-            left: 0;
-            top: 0;
-            width: 100%; /* Full width */
-            height: 100%; /* Full height */
-            overflow: auto; /* Enable scroll if needed */
-            background-color: rgba(0,0,0,0.5); /* Black w/ opacity */
-            justify-content: center;
-            align-items: center;
-        }
-
-        .modal {
-            background-color: #fefefe;
-            margin: auto;
-            padding: 30px;
-            border: 1px solid #888;
-            width: 80%;
-            max-width: 700px;
             border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-            position: relative;
-            animation-name: animatetop;
-            animation-duration: 0.4s
-        }
-
-        /* Add Animation */
-        @-webkit-keyframes animatetop {
-            from {top:-300px; opacity:0} 
-            to {top:0; opacity:1}
-        }
-
-        @keyframes animatetop {
-            from {top:-300px; opacity:0}
-            to {top:0; opacity:1}
-        }
-
-        .modal-close {
-            color: #aaa;
-            float: right;
-            font-size: 28px;
-            font-weight: bold;
-            position: absolute;
-            right: 15px;
-            top: 10px;
-        }
-
-        .modal-close:hover,
-        .modal-close:focus {
-            color: black;
-            text-decoration: none;
             cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .reset-btn:hover {
+            background: #e9ecef;
+            color: #333;
+            transform: translateY(-1px);
+        }
+        
+        .reset-btn i {
+            font-size: 0.9em;
+        }
+        
+        @media (max-width: 768px) {
+            .search-form {
+                flex-direction: column;
+            }
+            
+            .search-input,
+            .search-btn,
+            .reset-btn {
+                width: 100%;
+                justify-content: center;
+            }
         }
 
-        .modal h3 {
-            margin-top: 0; 
-            color: #2c3e50;
-        }
-
-        .modal p strong { color: #555; }
-        .modal p { margin-bottom: 10px; }
-
-        .modal table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 15px;
-        }
-
-        .modal table th,
-        .modal table td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
-
-        .modal table th {
-            background-color: #f2f2f2;
-        }
-
-        .modal img.proof-img {
-            max-width: 100%;
-            height: auto;
-            display: block;
-            margin-top: 15px;
-            border: 1px solid #eee;
-            border-radius: 5px;
-        }
-
+        /* Form Group Styling */
         .form-inline-group {
             display: flex;
-            gap: 24px;
-            margin-top: 32px;
+            gap: 20px;
+            margin: 2rem 0;
             flex-wrap: wrap;
         }
-        .form-inline-group form {
+
+        .form-kategori,
+        .form-lokasi,
+        .form-kurir {
+            flex: 1;
+            min-width: 300px;
             background: #fff;
+            padding: 1.5rem;
             border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-            padding: 18px 18px 10px 18px;
-            min-width: 260px;
-            flex: 1 1 260px;
-            max-width: 340px;
-            margin-bottom: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            border: 1px solid #e0e0e0;
         }
+
         .form-inline-group h3 {
             font-size: 1.1rem;
             font-weight: 600;
-            margin-bottom: 12px;
-        }
-        @media (max-width: 900px) {
-            .form-inline-group {
-                flex-direction: column;
-                gap: 12px;
-            }
-            .form-inline-group form {
-                max-width: 100%;
-            }
+            color: #333;
+            margin-bottom: 1.2rem;
+            padding-bottom: 0.8rem;
+            border-bottom: 2px solid #f0f0f0;
         }
 
-</style>
+        .form-inline-group .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-inline-group .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #555;
+            font-weight: 500;
+        }
+
+        .form-inline-group .form-input {
+            width: 100%;
+            padding: 0.6rem 1rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+        }
+
+        .form-inline-group .form-input:focus {
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52,152,219,0.1);
+            outline: none;
+        }
+
+        .form-inline-group .btn {
+            width: 100%;
+            padding: 0.8rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .form-inline-group .btn-success {
+            background: #2ecc71;
+            color: #fff;
+        }
+
+        .form-inline-group .btn-success:hover {
+            background: #27ae60;
+        }
+
+        .form-inline-group .btn-info {
+            background: #3498db;
+            color: #fff;
+        }
+
+        .form-inline-group .btn-info:hover {
+            background: #2980b9;
+        }
+
+        .form-inline-group .btn-warning {
+            background: #f1c40f;
+            color: #fff;
+        }
+
+        .form-inline-group .btn-warning:hover {
+            background: #f39c12;
+        }
+
+        @media (max-width: 992px) {
+            .form-inline-group {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .form-kategori,
+            .form-lokasi,
+            .form-kurir {
+                min-width: 100%;
+            }
+        }
+    </style>
+</head>
 <body>
     <div class="dashboard-wrapper">
         <aside class="sidebar" style="background:#0d6efd!important;color:#fff!important;">
@@ -537,8 +328,9 @@ if (isset($_SESSION['user_id'])) {
                     <li><a href="item.php" class="active"><i class="fas fa-boxes"></i> Barang</a></li>
                     <li><a href="pelanggan.php"><i class="fas fa-users"></i> Pelanggan</a></li>
                     <li><a href="pesanan.php"><i class="fas fa-receipt"></i> Pesanan</a></li>
-                    <li><a href="pembayaran.php"><i class="fas fa-dollar-sign"></i> Pembayaran</a></li>
-                    
+                    <li><a href="Transaksi.php"><i class="fas fa-dollar-sign"></i> Transaksi</a></li>
+                    <li><a href="chat_admin.php"><i class="fas fa-comments"></i> Chat</a></li>
+                    <li><a href="promo.php"><i class="fas fa-tags"></i> Promo</a></li>
                     <li><a href="setting.php"><i class="fas fa-cog"></i> Pengaturan</a></li>
                 </ul>
             </nav>
@@ -557,7 +349,7 @@ if (isset($_SESSION['user_id'])) {
             </header>
 
             <section class="section-form">
-                <form class="form-produk" method="POST" enctype="multipart/form-data">
+                <form class="form-produk" method="POST" enctype="multipart/form-data" onsubmit="setNotif('Produk berhasil ditambahkan!')">
                     <h3>Tambah Produk</h3>
                     <div class="form-group">
                         <label for="nama" class="form-label">Nama Produk</label>
@@ -584,7 +376,7 @@ if (isset($_SESSION['user_id'])) {
                         <textarea id="deskripsi" name="deskripsi" rows="3" class="form-input" required></textarea>
                     </div>
                     <div class="form-group">
-                        <label for="harga" class="form-label">Harga (Rp)</label>
+                        <label for="harga" class="form-label">Harga (Rp) / hari</label>
                         <input type="number" id="harga" name="harga" class="form-input" required>
                     </div>
                     <div class="form-group">
@@ -601,22 +393,18 @@ if (isset($_SESSION['user_id'])) {
                         <input type="number" id="stock" name="stock" class="form-input" required min="0">
                     </div>
                     <div class="form-group">
-                        <label for="max_duration" class="form-label">Durasi Maksimal Sewa</label>
+                        <label for="max_duration" class="form-label">Durasi Maksimal Sewa (hari)</label>
                         <input type="number" id="max_duration" name="max_duration" class="form-input" required min="1">
                     </div>
                     <div class="form-group">
-                        <label for="duration_unit" class="form-label">Unit Durasi</label>
-                        <select id="duration_unit" name="duration_unit" class="form-input" required>
-                            <option value="hari">Hari</option>
-                            <option value="minggu">Minggu</option>
-                            <option value="bulan">Bulan</option>
-                        </select>
+                        <input type="hidden" id="duration_unit" name="duration_unit" value="hari">
                     </div>
                     <button type="submit" name="tambah_produk" class="btn btn-primary">Tambah Produk</button>
                 </form>
+
                 <!-- Group form kategori, lokasi, kurir sejajar -->
                 <div class="form-inline-group">
-                    <form class="form-kategori" method="POST">
+                    <form class="form-kategori" method="POST" onsubmit="setNotif('Kategori berhasil ditambahkan!')">
                         <h3>Tambah Kategori</h3>
                         <div class="form-group">
                             <label for="nama_kategori" class="form-label">Nama Kategori</label>
@@ -624,7 +412,8 @@ if (isset($_SESSION['user_id'])) {
                         </div>
                         <button type="submit" name="tambah_kategori" class="btn btn-success">Tambah Kategori</button>
                     </form>
-                    <form class="form-lokasi" method="POST">
+
+                    <form class="form-lokasi" method="POST" onsubmit="setNotif('Lokasi berhasil ditambahkan!')">
                         <h3>Tambah Lokasi</h3>
                         <div class="form-group">
                             <label for="nama_lokasi" class="form-label">Nama Lokasi</label>
@@ -632,7 +421,8 @@ if (isset($_SESSION['user_id'])) {
                         </div>
                         <button type="submit" name="tambah_lokasi" class="btn btn-info">Tambah Lokasi</button>
                     </form>
-                    <form class="form-kurir" method="POST">
+
+                    <form class="form-kurir" method="POST" onsubmit="setNotif('Kurir berhasil ditambahkan!')">
                         <h3>Tambah Kurir</h3>
                         <div class="form-group">
                             <label for="nama_kurir" class="form-label">Nama Kurir</label>
@@ -645,6 +435,23 @@ if (isset($_SESSION['user_id'])) {
                         <button type="submit" name="tambah_kurir" class="btn btn-warning">Tambah Kurir</button>
                     </form>
                 </div>
+
+                <!-- Search Form dipindah ke sini -->
+                <div class="search-container">
+                    <form method="GET" class="search-form">
+                        <input type="text" name="search" class="search-input" 
+                               placeholder="Cari produk berdasarkan nama, deskripsi, kategori, atau lokasi..." 
+                               value="<?= htmlspecialchars($search) ?>">
+                        <button type="submit" class="search-btn">
+                            <i class="fas fa-search"></i> Cari
+                        </button>
+                        <?php if (!empty($search)): ?>
+                            <a href="item.php" class="reset-btn">
+                                <i class="fas fa-times"></i> Reset
+                            </a>
+                        <?php endif; ?>
+                    </form>
+                </div>
             </section>
 
             <section class="section-table">
@@ -652,40 +459,95 @@ if (isset($_SESSION['user_id'])) {
                 <table class="produk-table" border="0" cellpadding="0" cellspacing="0" width="100%">
                     <thead>
                         <tr>
-                            <th>Gambar</th>
+                            <th style="width:60px;">Gambar</th>
                             <th>Nama</th>
                             <th>Kategori</th>
-                            <th>Deskripsi</th>
-                            <th>Harga</th>
-                            <th>Stok</th>
-                            <th>Durasi Maks</th>
-                            <th>Unit</th>
+                            <th class="desc-col">Deskripsi</th>
+                            <th style="width:90px;">Harga</th>
+                            <th style="width:60px;">Stok</th>
+                            <th style="width:60px;">Durasi</th>
+                            <th style="width:60px;">Unit</th>
                             <th>Lokasi</th>
-                            <th>Aksi</th>
+                            <th class="actions" style="width:100px;">Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php while($p = mysqli_fetch_assoc($produk)): ?>
-                        <tr>
-                            <td><?php if($p['gambar']): ?><img src="../<?= htmlspecialchars($p['gambar']) ?>" alt="Gambar" class="table-img"><?php endif; ?></td>
-                            <td><?= htmlspecialchars($p['nama']) ?></td>
-                            <td><?= htmlspecialchars($p['kategori']) ?></td>
-                            <td><?= htmlspecialchars($p['deskripsi']) ?></td>
-                            <td>Rp <?= number_format($p['harga'],0,',','.') ?></td>
-                            <td><?= htmlspecialchars($p['stock']) ?></td>
-                            <td><?= htmlspecialchars($p['max_duration']) ?></td>
-                            <td><?= htmlspecialchars($p['duration_unit']) ?></td>
-                            <td><?= htmlspecialchars($p['lokasi']) ?></td>
-                            <td>
-                                <a href="edit_item.php?id=<?= $p['id'] ?>" class="btn btn-warning btn-sm">Edit</a>
-                                <a href="?hapus=<?= $p['id'] ?>" class="btn btn-danger btn-sm" onclick="return confirm('Hapus produk ini?')">Hapus</a>
-                            </td>
-                        </tr>
-                        <?php endwhile; ?>
+                        <?php if (mysqli_num_rows($produk) > 0): ?>
+                            <?php while($p = mysqli_fetch_assoc($produk)): ?>
+                                <tr>
+                                    <td><?php if($p['gambar']): ?><img src="../<?= htmlspecialchars($p['gambar']) ?>" alt="Gambar" class="table-img"><?php endif; ?></td>
+                                    <td><?= htmlspecialchars($p['nama']) ?></td>
+                                    <td><?= htmlspecialchars($p['kategori']) ?></td>
+                                    <td class="desc-col" title="<?= htmlspecialchars($p['deskripsi']) ?>"><?= htmlspecialchars($p['deskripsi']) ?></td>
+                                    <td>Rp <?= number_format($p['harga'],0,',','.') ?></td>
+                                    <td class="badge-col"><span class="badge stock"><?= htmlspecialchars($p['stock']) ?></span></td>
+                                    <td><?= htmlspecialchars($p['max_duration']) ?></td>
+                                    <td class="badge-col"><span class="badge unit"><?= htmlspecialchars($p['duration_unit']) ?></span></td>
+                                    <td><?= htmlspecialchars($p['lokasi']) ?></td>
+                                    <td class="actions">
+                                        <a href="edit_item.php?id=<?= $p['id'] ?>" class="btn btn-warning btn-sm" onclick="setNotif('Edit produk, simpan perubahan untuk melihat notifikasi!')">Edit</a>
+                                        <a href="?hapus=<?= $p['id'] ?>" class="btn btn-danger btn-sm" onclick="setNotif('Produk berhasil dihapus!'); return confirm('Hapus produk ini?')">Hapus</a>
+                                    </td>
+                                </tr>
+                            <?php endwhile; ?>
+                        <?php else: ?>
+                            <tr>
+                                <td colspan="10" class="text-center py-4">
+                                    <?php if (!empty($search)): ?>
+                                        <div class="text-muted">
+                                            <i class="fas fa-search fa-3x mb-3"></i>
+                                            <p>Tidak ada produk yang ditemukan untuk pencarian "<?= htmlspecialchars($search) ?>"</p>
+                                            <a href="item.php" class="btn btn-outline-primary">
+                                                <i class="fas fa-times"></i> Reset Pencarian
+                                            </a>
+                                        </div>
+                                    <?php else: ?>
+                                        <div class="text-muted">
+                                            <i class="fas fa-box-open fa-3x mb-3"></i>
+                                            <p>Belum ada produk yang ditambahkan</p>
+                                        </div>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </section>
         </main>
     </div>
+    <script>
+        // Toast notification logic
+        function setNotif(msg) {
+            localStorage.setItem('toastNotif', msg);
+        }
+        window.onload = function() {
+            var notif = localStorage.getItem('toastNotif');
+            if (notif) {
+                showToast(notif);
+                localStorage.removeItem('toastNotif');
+            }
+        };
+        function showToast(msg) {
+            var toast = document.createElement('div');
+            toast.innerText = msg;
+            toast.style.position = 'fixed';
+            toast.style.bottom = '30px';
+            toast.style.right = '30px';
+            toast.style.background = '#2ecc71';
+            toast.style.color = '#fff';
+            toast.style.padding = '16px 28px';
+            toast.style.borderRadius = '8px';
+            toast.style.fontSize = '1.1em';
+            toast.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+            toast.style.zIndex = 9999;
+            toast.style.opacity = 1;
+            toast.style.transition = 'opacity 0.5s';
+            document.body.appendChild(toast);
+            setTimeout(function() {
+                toast.style.opacity = 0;
+                setTimeout(function() { toast.remove(); }, 500);
+            }, 2200);
+        }
+    </script>
 </body>
 </html>

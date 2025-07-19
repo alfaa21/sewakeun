@@ -136,9 +136,16 @@ include_once 'includes/session_bootstrap.php';
                     <label for="alamat">Alamat Lengkap</label>
                 </div>
                 <div class="mb-3">
-                    <label for="foto_profil" class="form-label">Foto Profil</label>
-                    <input type="file" class="form-control" id="foto_profil" name="foto_profil" accept="image/*">
-                    <small class="form-text text-muted">Opsional. Format gambar: JPG, JPEG, PNG, GIF. Max 2MB.</small>
+                    <label for="role" class="form-label">Daftar Sebagai</label>
+                    <select class="form-select" id="role" name="role" required>
+                        <option value="user">User</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="ktp_image" class="form-label">Upload Foto KTP</label>
+                    <input type="file" class="form-control" id="ktp_image" name="ktp_image" accept="image/*" required>
+                    <small class="form-text text-muted">Wajib. Format gambar: JPG, JPEG, PNG, GIF. Max 2MB.</small>
                 </div>
                 <div class="d-grid">
                     <button type="submit" class="btn btn-primary btn-lg">Daftar Akun</button>

@@ -22,8 +22,8 @@ if (isset($_POST['claim_promo_id']) && isset($_SESSION['user_id'])) {
 
 // Load PromoModel
 require_once 'models/PromoModel.php';
-$promoModel = new PromoModel($conn);
-$promos = $promoModel->getActivePromos();
+$PromoModel = new PromoModel($conn);
+$promos = $PromoModel->getActivePromos();
 
 include 'includes/_header.php';
 ?>

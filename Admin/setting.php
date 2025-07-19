@@ -117,25 +117,142 @@ if (isset($_POST['update_admin_profile'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Admin - Pengaturan</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style_admin.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+    body {
+        background: #f4f7f6;
+    }
+    .main-content {
+        padding: 32px 18px;
+        background: #f4f7f6;
+    }
+    .settings-management {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        padding: 32px 28px 24px 28px;
+        margin-bottom: 32px;
+        max-width: 600px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    .settings-management h3 {
+        margin-top: 0;
+        margin-bottom: 22px;
+        color: #2c3e50;
+        font-size: 1.3em;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+    }
+    .settings-form {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+    }
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+    .form-group.checkbox-group {
+        flex-direction: row;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 0;
+    }
+    .settings-form label {
+        font-weight: 500;
+        color: #444;
+        margin-bottom: 2px;
+    }
+    .settings-form input[type="text"],
+    .settings-form input[type="email"],
+    .settings-form input[type="password"],
+    .settings-form textarea {
+        padding: 10px 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 1em;
+        background: #fafbfc;
+        color: #333;
+        transition: border 0.2s;
+    }
+    .settings-form input[type="text"]:focus,
+    .settings-form input[type="email"]:focus,
+    .settings-form input[type="password"]:focus,
+    .settings-form textarea:focus {
+        border: 1.5px solid #3498db;
+        outline: none;
+        background: #fff;
+    }
+    .settings-form button {
+        align-self: flex-end;
+        margin-top: 8px;
+    }
+    .form-group.text-center {
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 10px;
+    }
+    .customer-profile-picture-preview {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid #3498db;
+        box-shadow: 0 2px 8px rgba(52,152,219,0.08);
+        margin-bottom: 8px;
+    }
+    .alert {
+        padding: 14px 22px;
+        border-radius: 8px;
+        margin-bottom: 18px;
+        font-size: 1em;
+        font-weight: 500;
+        max-width: 600px;
+        margin-left: auto;
+        margin-right: auto;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .alert.success {
+        background: #eafaf1;
+        color: #219150;
+        border: 1.5px solid #2ecc71;
+    }
+    .alert.error {
+        background: #fff0f0;
+        color: #c0392b;
+        border: 1.5px solid #e74c3c;
+    }
+    @media (max-width: 700px) {
+        .settings-management {
+            padding: 18px 6vw 16px 6vw;
+        }
+        .main-content {
+            padding: 18px 2vw;
+        }
+    }
+    </style>
 </head>
 <body>
     <div class="dashboard-wrapper">
-        <aside class="sidebar" style="background:#0d6efd!important;color:#fff!important;">
+        <aside class="sidebar">
             <div class="sidebar-logo">
                 <i class="fas fa-box-open"></i>
                 <h3>Sewakeun Admin</h3>
             </div>
             <nav class="sidebar-nav">
-                <ul>
-                    <li><a href="index.php"><i class="fas fa-home"></i> Dashboard</a></li>
+            <ul>
+                    <li><a href="index.php" class="active"><i class="fas fa-home"></i> Dashboard</a></li>
                     <li><a href="item.php"><i class="fas fa-boxes"></i> Barang</a></li>
                     <li><a href="pelanggan.php"><i class="fas fa-users"></i> Pelanggan</a></li>
                     <li><a href="pesanan.php"><i class="fas fa-receipt"></i> Pesanan</a></li>
-                    <li><a href="pembayaran.php"><i class="fas fa-dollar-sign"></i> Pembayaran</a></li> 
-                    <li><a href="setting.php" class="active"><i class="fas fa-cog"></i> Pengaturan</a></li>
+                    <li><a href="Transaksi.php"><i class="fas fa-dollar-sign"></i> Transaksi</a></li>
+                    <li><a href="chat_admin.php"><i class="fas fa-comments"></i> Chat</a></li>
+                    <li><a href="promo.php"><i class="fas fa-tags"></i> Promo</a></li>
+                    <li><a href="setting.php"><i class="fas fa-cog"></i> Pengaturan</a></li>
                 </ul>
             </nav>
             <div class="sidebar-footer">
@@ -208,8 +325,8 @@ if (isset($_POST['update_admin_profile'])) {
             <section class="settings-management">
                 <h3>Manajemen Akun Admin</h3>
                 <form class="settings-form" method="POST" enctype="multipart/form-data">
-                    <div class="form-group" style="text-align:center;">
-                        <img src="../<?= htmlspecialchars($admin_data['foto_profil'] ?? 'assets/images/account-avatar-profile-user-6-svgrepo-com.svg') ?>" alt="Foto Profil Admin" style="width:80px;height:80px;object-fit:cover;border-radius:50%;margin-bottom:10px;">
+                    <div class="form-group text-center">
+                        <img src="../<?= htmlspecialchars($admin_data['foto_profil'] ?? 'assets/images/account-avatar-profile-user-6-svgrepo-com.svg') ?>" alt="Foto Profil Admin" class="customer-profile-picture-preview">
                     </div>
                     <div class="form-group">
                         <label for="username">Username:</label>
@@ -229,7 +346,7 @@ if (isset($_POST['update_admin_profile'])) {
                     </div>
                     <div class="form-group">
                         <label for="alamat">Alamat:</label>
-                        <textarea id="alamat" name="alamat" rows="2" style="width:100%;padding:8px;"><?= htmlspecialchars($admin_data['alamat'] ?? '') ?></textarea>
+                        <textarea id="alamat" name="alamat" rows="2" class="form-input"><?= htmlspecialchars($admin_data['alamat'] ?? '') ?></textarea>
                     </div>
                     <div class="form-group">
                         <label for="foto_profil">Foto Profil:</label>

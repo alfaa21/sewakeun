@@ -10,8 +10,9 @@ if (isset($_POST['username']) && isset($_POST['password']) && isset($_POST['conf
     $email = $_POST['email'];
     $no_hp = $_POST['no_hp'];
     $alamat = $_POST['alamat'];
-    $role = 'user'; // Default role untuk pendaftaran adalah user
+    $role = isset($_POST['role']) ? $_POST['role'] : 'user'; // Ambil role dari form
     $foto_profil_path = 'assets/images/default_profile.png'; // Default path
+    $ktp_image_path = NULL;
 
     // Validasi password cocok
     if ($password !== $confirm_password) {
@@ -64,6 +65,47 @@ if (isset($_POST['username']) && isset($_POST['password']) && isset($_POST['conf
         }
     }
 
+    // Handle upload gambar KTP
+    if (isset($_FILES['ktp_image']) && $_FILES['ktp_image']['error'] === UPLOAD_ERR_OK) {
+        $file_tmp_name = $_FILES['ktp_image']['tmp_name'];
+        $file_name = $_FILES['ktp_image']['name'];
+        $file_size = $_FILES['ktp_image']['size'];
+        $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
+        $allowed_extensions = array('jpg', 'jpeg', 'png', 'gif');
+        $max_file_size = 2 * 1024 * 1024; // 2MB
+        if (!in_array($file_ext, $allowed_extensions)) {
+            $_SESSION['message'] = 'Ekstensi file KTP tidak diizinkan. Gunakan JPG, JPEG, PNG, atau GIF.';
+            $_SESSION['message_type'] = 'danger';
+            header('Location: register.php');
+            exit();
+        }
+        if ($file_size > $max_file_size) {
+            $_SESSION['message'] = 'Ukuran file KTP terlalu besar, maksimal 2MB.';
+            $_SESSION['message_type'] = 'danger';
+            header('Location: register.php');
+            exit();
+        }
+        $upload_dir = 'assets/images/ktp/';
+        if (!is_dir($upload_dir)) {
+            mkdir($upload_dir, 0777, true);
+        }
+        $new_file_name = uniqid('ktp_') . '.' . $file_ext;
+        $upload_path = $upload_dir . $new_file_name;
+        if (move_uploaded_file($file_tmp_name, $upload_path)) {
+            $ktp_image_path = $upload_path;
+        } else {
+            $_SESSION['message'] = 'Gagal mengunggah foto KTP.';
+            $_SESSION['message_type'] = 'danger';
+            header('Location: register.php');
+            exit();
+        }
+    } else {
+        $_SESSION['message'] = 'Upload foto KTP wajib.';
+        $_SESSION['message_type'] = 'danger';
+        header('Location: register.php');
+        exit();
+    }
+
     // Hash password dengan MD5 (sesuai skema database Anda)
     $hashed_password = md5($password);
 
@@ -100,11 +142,11 @@ if (isset($_POST['username']) && isset($_POST['password']) && isset($_POST['conf
     mysqli_stmt_close($stmt_check_email);
 
     // Masukkan data pengguna baru ke database
-    $insert_query = "INSERT INTO users (username, password, nama_lengkap, email, no_hp, alamat, foto_profil, role) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+    $insert_query = "INSERT INTO users (username, password, nama_lengkap, email, no_hp, alamat, foto_profil, role, ktp_image) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
     $stmt_insert = mysqli_prepare($conn, $insert_query);
     
     if ($stmt_insert) {
-        mysqli_stmt_bind_param($stmt_insert, "ssssssss", $username, $hashed_password, $nama_lengkap, $email, $no_hp, $alamat, $foto_profil_path, $role);
+        mysqli_stmt_bind_param($stmt_insert, "sssssssss", $username, $hashed_password, $nama_lengkap, $email, $no_hp, $alamat, $foto_profil_path, $role, $ktp_image_path);
         if (mysqli_stmt_execute($stmt_insert)) {
             $_SESSION['message'] = 'Registrasi berhasil! Silakan login.';
             $_SESSION['message_type'] = 'success';

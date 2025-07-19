@@ -1,0 +1,17 @@
+Login user1:
+username: user1
+password: user123
+
+Login user2:
+username: user2
+password: user123
+
+Login user3:
+username: user3
+password: user123
+
+Login admin:
+username: admin1
+password: admin123
+
+kalo ai recomendation error ganti api key groq

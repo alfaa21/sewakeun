@@ -223,13 +223,14 @@ if (isset($_SESSION['user_id'])) {
                 <h3>Sewakeun Admin</h3>
             </div>
             <nav class="sidebar-nav">
-                <ul>
-                    <li><a href="index.php"><i class="fas fa-home"></i> Dashboard</a></li>
+            <ul>
+                    <li><a href="index.php" class="active"><i class="fas fa-home"></i> Dashboard</a></li>
                     <li><a href="item.php"><i class="fas fa-boxes"></i> Barang</a></li>
-                    <li><a href="pelanggan.php" class="active"><i class="fas fa-users"></i> Pelanggan</a></li>
+                    <li><a href="pelanggan.php"><i class="fas fa-users"></i> Pelanggan</a></li>
                     <li><a href="pesanan.php"><i class="fas fa-receipt"></i> Pesanan</a></li>
-                    <li><a href="pembayaran.php"><i class="fas fa-dollar-sign"></i> Pembayaran</a></li>
-                    
+                    <li><a href="Transaksi.php"><i class="fas fa-dollar-sign"></i> Transaksi</a></li>
+                    <li><a href="chat_admin.php"><i class="fas fa-comments"></i> Chat</a></li>
+                    <li><a href="promo.php"><i class="fas fa-tags"></i> Promo</a></li>
                     <li><a href="setting.php"><i class="fas fa-cog"></i> Pengaturan</a></li>
                 </ul>
             </nav>

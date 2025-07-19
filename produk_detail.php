@@ -22,13 +22,13 @@ if (!$product_data) {
 <?php
 $from = $_GET['from'] ?? '';
 $back_url = 'index.php';
-if ($from === 'ai') {
+if (isset($_GET['from']) && $_GET['from'] === 'ai') {
     $back_url = 'chat.php';
-} elseif ($from === 'index') {
-    $back_url = 'index.php';
+} elseif (isset($_GET['cat']) && is_numeric($_GET['cat'])) {
+    $back_url = 'kategori.php?cat=' . intval($_GET['cat']);
 }
 ?>
-<a href="<?= htmlspecialchars($back_url) ?>" class="btn btn-secondary mb-3"><i class="fas fa-arrow-left"></i> Kembali</a>
+<a href="<?= $back_url ?>" class="btn btn-secondary mb-3"><i class="fas fa-arrow-left"></i> Kembali</a>
 
 <main class="container mt-4">
     <div class="row">

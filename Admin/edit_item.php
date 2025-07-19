@@ -165,7 +165,7 @@ $lokasi = mysqli_query($conn, "SELECT * FROM lokasi");
                     <li><a href="item.php" class="active"><i class="fas fa-boxes"></i> Barang</a></li>
                     <li><a href="pelanggan.php"><i class="fas fa-users"></i> Pelanggan</a></li>
                     <li><a href="pesanan.php"><i class="fas fa-receipt"></i> Pesanan</a></li>
-                    <li><a href="pembayaran.php"><i class="fas fa-dollar-sign"></i> Pembayaran</a></li>
+                    <li><a href="Transaksi.php"><i class="fas fa-dollar-sign"></i> Transaksi</a></li>
                     <li><a href="statistik.php"><i class="fas fa-chart-line"></i> Statistik</a></li>
                     <li><a href="setting.php"><i class="fas fa-cog"></i> Pengaturan</a></li>
                 </ul>
