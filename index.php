@@ -10,14 +10,14 @@ if (isset($_POST['add_to_cart_ajax'])) {
     if (isset($_SESSION['user_id'])) {
         // User login, simpan ke database
         $user_id = $_SESSION['user_id'];
-        // Cek apakah produk sudah ada di cart_items
+      
         $cek = mysqli_query($conn, "SELECT id, qty FROM cart_items WHERE user_id=$user_id AND product_id=$id");
         if ($row = mysqli_fetch_assoc($cek)) {
-            // Update qty
+         
             $new_qty = $row['qty'] + 1;
             mysqli_query($conn, "UPDATE cart_items SET qty=$new_qty WHERE id=" . $row['id']);
         } else {
-            // Insert baru
+            
             mysqli_query($conn, "INSERT INTO cart_items (user_id, product_id, qty) VALUES ($user_id, $id, 1)");
         }
         header('Content-Type: application/json');
@@ -87,7 +87,7 @@ $kategori_icons = [
 <?php endif; ?>
 
 <style>
-/* Tambahan style untuk landing page mirip gambar */
+
 .landing-navbar {
     background: #fff;
     border-bottom: 2px solid #eaeaea;
@@ -144,12 +144,12 @@ $kategori_icons = [
     display: flex;
     align-items: center;
     justify-content: center;
-    background: url('https://images.unsplash.com/photo-1542838132-92c53300491e?q=80&w=1974&auto=format&fit=crop') center center/cover no-repeat;
-    /* border-radius: 0 0 32px 32px; */
+    background: url('https://c1.wallpaperflare.com/preview/439/1004/900/souk-discount-bazaar-alley.jpg') center center/cover no-repeat;
+    /* border-radius: 0 0 32px 32px; */crop
     border-radius: 0;
     margin-bottom: 0;
     overflow: hidden;
-    /* Hapus margin-top dan padding-top agar menempel ke navbar */
+    
 }
 
 /* Hapus margin-top pada container utama jika ada */
@@ -231,7 +231,7 @@ $kategori_icons = [
         font-size: 0.95rem;
     }
 }
-/* --- PROMO CARDS RECTANGULAR --- */
+
 .promo-cards {
     display: flex;
     gap: 2rem;
@@ -476,12 +476,11 @@ $kategori_icons = [
 .product-list-title {
     font-size: 2rem;
     font-weight: 700;
-    margin-bottom: 3rem; /* Margin bawah sedikit lebih besar */
+    margin-bottom: 3rem; 
     text-align: center;
     width: 100%;
 }
 
-/* Product Grid Styles (Modern & Refined) */
 .product-list {
     margin-bottom: 3rem;
     padding: 0 1rem;
@@ -490,64 +489,64 @@ $kategori_icons = [
 .product-grid-5-col {
     display: flex;
     flex-wrap: wrap;
-    gap: 1.2rem; /* Jarak antar card */
+    gap: 1.2rem; 
     justify-content: center;
     margin: 0 auto;
-    max-width: 1800px; /* Lebar maksimal untuk 6 kolom (disesuaikan) */
+    max-width: 1800px; 
 }
 
 .product-card-item {
-    flex: 0 0 calc(16.666% - 1rem); /* 6 kolom dengan gap */
+    flex: 0 0 calc(16.666% - 1rem); 
     max-width: calc(16.666% - 1rem);
     background: #fff;
-    border-radius: 10px; /* Sudut membulat modern di atas */
-    box-shadow: 0 6px 20px rgba(0,0,0,0.08); /* Bayangan lebih modern */
+    border-radius: 10px; 
+    box-shadow: 0 6px 20px rgba(0,0,0,0.08); 
     transition: transform 0.2s ease, box-shadow 0.2s ease;
-    height: auto; /* Tinggi menyesuaikan konten */
+    height: auto; 
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    text-decoration: none; /* Hilangkan underline pada link card */
+    text-decoration: none; 
     color: inherit;
 }
 
 .product-card-item:hover {
-    transform: translateY(-6px); /* Sedikit naik saat hover */
-    box-shadow: 0 10px 35px rgba(0,0,0,0.18) !important; /* Bayangan lebih kuat saat hover */
+    transform: translateY(-6px); 
+    box-shadow: 0 10px 35px rgba(0,0,0,0.18) !important; 
 }
 
 .product-card-item .product-img-wrap {
     width: 100%;
-    aspect-ratio: 1 / 0.8; /* Rasio aspek gambar 1:0.8 (lebih lebar) */
-    background: #f0f2f5; /* Background abu-abu muda untuk gambar */
+    aspect-ratio: 1 / 0.8; 
+    background: #f0f2f5; 
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    border-radius: 10px 10px 0 0; /* Sudut atas membulat, bawah tajam */
+    border-radius: 10px 10px 0 0; 
 }
 
 .product-card-item .img-fluid {
     width: 100%;
     height: 100%;
-    object-fit: cover; /* Gambar mengisi penuh area, cropping jika perlu */
-    transition: transform 0.3s ease; /* Transisi halus untuk zoom gambar */
+    object-fit: cover; 
+    transition: transform 0.3s ease; 
 }
 
 .product-card-item:hover .img-fluid {
-    transform: scale(1.08); /* Zoom gambar sedikit saat hover */
+    transform: scale(1.08); 
 }
 
 .product-card-item .card-body {
-    padding: 0.8rem 0.9rem 0.9rem 0.9rem; /* Padding konten disesuaikan */
+    padding: 0.8rem 0.9rem 0.9rem 0.9rem; 
     flex-grow: 1;
     display: flex;
     flex-direction: column;
-    justify-content: space-between; /* Untuk mendorong tombol ke bawah */
+    justify-content: space-between; 
 }
 
 .product-card-item .card-title {
-    font-size: 0.95rem; /* Ukuran font judul disesuaikan */
+    font-size: 0.95rem; 
     font-weight: 600;
     margin-bottom: 0.2rem;
     white-space: nowrap;
@@ -668,9 +667,7 @@ $kategori_icons = [
 }
 
 </style>
-<!-- NAVBAR LANDING -->
-<!-- (Bagian ini dihapus sesuai permintaan user) -->
-<!-- HERO LANDING -->
+
 <section class="hero-landing mb-0">
     <div class="overlay"></div>
     <div class="hero-content">
@@ -752,7 +749,7 @@ $kategori_icons = [
                                     <p class="product-price">Rp <?= number_format($p['harga'],0,',','.') ?>/hari</p>
                                     <div class="product-rating">
                                     <?php
-                                        // Ambil jumlah dan rata-rata rating review untuk produk ini
+                                        
                                         $product_id = $p['id'];
                                         $review_stat = mysqli_query($conn, "SELECT COUNT(*) as total, AVG(rating) as avg_rating FROM reviews WHERE product_id=$product_id");
                                         $stat = mysqli_fetch_assoc($review_stat);

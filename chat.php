@@ -13,18 +13,18 @@ if (isset($_POST['clear'])) {
     exit();
 }
 
-// Ambil semua produk dari database
+
 $produk_list = [];
 $produk_query = mysqli_query($conn, "SELECT p.*, k.nama AS kategori, l.nama AS lokasi FROM produk p JOIN kategori k ON p.kategori_id = k.id JOIN lokasi l ON p.lokasi_id = l.id ORDER BY p.id DESC");
 while($p = mysqli_fetch_assoc($produk_query)) {
-    // Ambil rating untuk setiap produk
+  
     $product_id = $p['id'];
     $review_stat = mysqli_query($conn, "SELECT COUNT(*) as total, AVG(rating) as avg_rating FROM reviews WHERE product_id=$product_id");
     $stat = mysqli_fetch_assoc($review_stat);
     $total_review = (int)($stat['total'] ?? 0);
     $avg_rating = round($stat['avg_rating'] ?? 0, 1);
     
-    // Tambahkan info rating ke array produk
+   
     $p['total_review'] = $total_review;
     $p['avg_rating'] = $avg_rating;
     $produk_list[] = $p;
@@ -40,7 +40,7 @@ foreach ($produk_list as $p) {
     $produk_context .= "- {$p['nama']} (Rp " . number_format($p['harga'],0,',','.') . ", kategori: {$p['kategori']}, lokasi: {$p['lokasi']}, stok: {$p['stock']}{$rating_info}): {$p['deskripsi']}\n";
 }
 
-// Ambil kategori
+
 $kategori_list = [];
 $kategori_query = mysqli_query($conn, "SELECT * FROM kategori");
 while($k = mysqli_fetch_assoc($kategori_query)) {
@@ -48,7 +48,7 @@ while($k = mysqli_fetch_assoc($kategori_query)) {
 }
 $kategori_context = "Kategori tersedia: ".implode(', ', $kategori_list);
 
-// Ambil lokasi
+
 $lokasi_list = [];
 $lokasi_query = mysqli_query($conn, "SELECT * FROM lokasi");
 while($l = mysqli_fetch_assoc($lokasi_query)) {
@@ -56,7 +56,7 @@ while($l = mysqli_fetch_assoc($lokasi_query)) {
 }
 $lokasi_context = "Lokasi tersedia: ".implode(', ', $lokasi_list);
 
-// Ambil settings
+
 $settings = [];
 $settings_query = mysqli_query($conn, "SELECT setting_name, setting_value FROM settings");
 while($s = mysqli_fetch_assoc($settings_query)) {
@@ -115,7 +115,7 @@ if (isset($result['choices'][0]['message']['content'])) {
 } else {
     $bot_reply = 'Maaf, terjadi kesalahan. (Debug: ' . htmlspecialchars($response) . ')';
 }
-    // Simpan ke history
+    
     $_SESSION['chat_history'][] = ['user' => $user_msg, 'bot' => $bot_reply];
 }
 
@@ -139,12 +139,12 @@ include 'includes/_header.php';
         <div class="card-body chat-messages-container">
             <div class="d-flex flex-column chat-messages-inner">
                 <?php 
-                // Ambil daftar produk untuk pencocokan nama
+             
                 $produk_nama_to_gambar = [];
                 foreach ($produk_list as $p) {
                     $produk_nama_to_gambar[strtolower($p['nama'])] = $p;
                 }
-                // Ambil id produk juga untuk link detail/sewa/keranjang
+                
                 $produk_nama_to_id = [];
                 $produk_id_map = [];
                 $produk_query_id = mysqli_query($conn, "SELECT id, nama FROM produk");
@@ -154,23 +154,23 @@ include 'includes/_header.php';
                 }
                 ?>
                 <?php foreach ($_SESSION['chat_history'] as $chat): ?>
-                    <!-- Bubble user -->
+                    
                     <div class="d-flex justify-content-end mb-2">
                         <div class="card p-2 shadow-sm chat-bubble bg-primary text-white">
                             <?= nl2br(htmlspecialchars($chat['user'])) ?>
                         </div>
                     </div>
-                    <!-- Bubble bot -->
+                    
                     <div class="d-flex justify-content-start mb-2">
                         <div class="card p-2 shadow-sm chat-bubble bg-light">
                             <?= nl2br(htmlspecialchars($chat['bot'])) ?>
                         </div>
                     </div>
                     <?php
-                    // Cari nama produk yang disebutkan di balasan bot (maksimal 3)
+                    
                     $produk_ditampilkan = [];
                     $bot_text = strtolower($chat['bot']);
-                    // Deteksi jika AI menyatakan tidak punya produk yang diminta user
+                    
                     $tidak_ada_produk = false;
                     $frasa_tidak_ada = [
                         'tidak memiliki',
@@ -245,7 +245,7 @@ include 'includes/_header.php';
                     if (!$tidak_ada_produk) {
                         foreach ($produk_nama_to_gambar as $nama => $p) {
                             if (count($produk_ditampilkan) >= 4) break;
-                            // Cek apakah nama produk disebut di balasan bot (pencocokan sederhana)
+                           
                             if (strpos($bot_text, strtolower($nama)) !== false) {
                                 $produk_ditampilkan[] = $p + ['id' => $produk_nama_to_id[$nama] ?? null];
                             }

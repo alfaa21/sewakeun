@@ -20,7 +20,7 @@ include_once __DIR__ . '/session_bootstrap.php';
         <div class="container-fluid">
             <a class="navbar-brand d-flex align-items-center" href="index.php">
                 <img src="assets/images/th.jpeg" alt="Logo" width="40" height="40" class="me-2 rounded-circle">
-                <span class="fw-bold text-white">Sewaken</span>
+                <span class="fw-bold text-white">Sewakeun</span>
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavDropdown" aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
