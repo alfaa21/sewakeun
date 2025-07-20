@@ -140,7 +140,7 @@ include 'includes/_header.php';
                             <label class="form-label">Metode Pengiriman</label><br>
                             <div class="form-check form-check-inline">
                                 <input class="form-check-input" type="radio" name="metode_pengiriman" id="pengiriman_cod" value="COD" checked>
-                                <label class="form-check-label" for="pengiriman_cod">COD (Bayar di Tempat)</label>
+                                <label class="form-check-label" for="pengiriman_cod">Ambil di Tempat</label>
                             </div>
                             <div class="form-check form-check-inline">
                                 <input class="form-check-input" type="radio" name="metode_pengiriman" id="pengiriman_kurir" value="Jemput Kurir">

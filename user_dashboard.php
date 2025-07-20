@@ -620,7 +620,7 @@ for ($i = 5; $i >= 0; $i--) {
                                                                     <label class="form-label">Metode Pengembalian</label><br>
                                                                     <div class="form-check form-check-inline">
                                                                       <input class="form-check-input metode-pengembalian" type="radio" name="metode_pengembalian" id="return_cod<?= $t['id_transaksi'] ?>" value="COD" checked>
-                                                                      <label class="form-check-label" for="return_cod<?= $t['id_transaksi'] ?>">COD (Serahkan langsung)</label>
+                                                                      <label class="form-check-label" for="return_cod<?= $t['id_transaksi'] ?>">Kembalikan Sendiri</label>
                                                                     </div>
                                                                     <div class="form-check form-check-inline">
                                                                       <input class="form-check-input metode-pengembalian" type="radio" name="metode_pengembalian" id="return_kurir<?= $t['id_transaksi'] ?>" value="Kurir">
